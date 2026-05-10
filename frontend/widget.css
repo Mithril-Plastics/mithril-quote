@@ -113,11 +113,15 @@
 #mq .mq-inp::placeholder{color:#888}
 #mq .mq-inp.error{border-color:#ea384c}
 #mq .mq-note{resize:vertical;min-height:90px;line-height:1.6}
+#mq .mq-select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%2354f2e5' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:11px;padding-right:30px;cursor:pointer}
+#mq .mq-select option{background:#100020;color:#fff}
 .mq-submit-err{color:#ea384c;font-size:14px;margin-bottom:12px}
 .mq-success{text-align:center;padding:40px 28px;margin-top:10px;background:rgba(84,242,229,.06);border:1px solid rgba(84,242,229,.3);border-radius:12px}
 .mq-success-icon{font-size:42px;margin-bottom:14px}
 .mq-success h3{font-size:18px;font-weight:800;color:#54f2e5;margin-bottom:8px}
 .mq-success p{font-size:15px;color:#ccc;line-height:1.6}
+.mq-success-email{margin-top:12px !important;font-size:13px !important;color:#888 !important}
+.mq-success-email strong{color:#54f2e5}
 .mq-loader{text-align:center;padding:60px 20px;color:#a8a8a8;font-size:15px}
 @keyframes mq-spin{to{transform:rotate(360deg)}}
 .mq-spinner{width:36px;height:36px;border:2px solid rgba(86,5,145,.3);border-top-color:#54f2e5;border-radius:50%;animation:mq-spin .75s linear infinite;margin:0 auto 20px}

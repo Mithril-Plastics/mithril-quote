@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quote Request Confirmed — Mithril Plastics</title>
+</head>
+<body style="margin:0;padding:0;background:#06000f;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif">
+
+  <!-- Outer wrapper -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#06000f;padding:40px 20px">
+    <tr>
+      <td align="center">
+
+        <!-- Card -->
+        <table width="600" cellpadding="0" cellspacing="0" border="0"
+               style="max-width:600px;width:100%;background:#0c0118;border:1px solid #560591;border-radius:18px;overflow:hidden">
+
+          <!-- ── Header ── -->
+          <tr>
+            <td style="padding:36px 48px 32px;border-bottom:1px solid rgba(86,5,145,0.5)">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td>
+                    <img src="https://cdn.prod.website-files.com/68dc75f5161ad85e0cd30bd2/69fe4fbbd1c90020242cf636_logo.gif"
+                         alt="Mithril Plastics" height="42" style="display:block;height:42px;width:auto">
+                  </td>
+                  <td align="right">
+                    <span style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:0.18em;
+                                 text-transform:uppercase;color:#54f2e5;background:rgba(84,242,229,0.1);
+                                 border:1px solid rgba(84,242,229,0.3);border-radius:4px;padding:7px 14px">
+                      Instant Quote
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ── Hero ── -->
+          <tr>
+            <td style="padding:40px 48px 32px;border-bottom:1px solid rgba(86,5,145,0.3)">
+              <p style="margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:0.1em;
+                         text-transform:uppercase;color:#54f2e5">
+                Quote Request Confirmed
+              </p>
+              <h1 style="margin:0 0 16px;font-size:26px;font-weight:800;color:#ffffff;line-height:1.2">
+                Thanks, {{name}}!
+              </h1>
+              <p style="margin:0;font-size:15px;color:#aaa;line-height:1.7">
+                We've received your quote request and our team will review your files. You'll hear
+                back from us within <strong style="color:#fff">1 business day</strong>.
+              </p>
+            </td>
+          </tr>
+
+          <!-- ── Quote summary ── -->
+          <tr>
+            <td style="padding:32px 48px">
+
+              <!-- Section label -->
+              <p style="margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:0.1em;
+                          text-transform:uppercase;color:#666;border-bottom:1px solid rgba(86,5,145,0.35);
+                          padding-bottom:10px">
+                Your Quote Summary
+              </p>
+
+              <!-- Process & Material pill -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="background:rgba(86,5,145,0.15);border:1px solid rgba(86,5,145,0.4);
+                            border-radius:11px;margin-bottom:20px">
+                <tr>
+                  <td style="padding:14px 20px">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td>
+                          <strong style="font-size:15px;color:#54f2e5">{{process}} &middot; {{material}}</strong>
+                        </td>
+                        <td align="right">
+                          <span style="font-size:13px;color:#aaa">{{lead_time}}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Files & pricing block -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="background:rgba(86,5,145,0.08);border:1px solid rgba(86,5,145,0.3);
+                            border-radius:11px;margin-bottom:20px">
+                <tr>
+                  <td style="padding:16px 20px">
+                    <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.07em;
+                               text-transform:uppercase;color:#666">Files &amp; Quantities</p>
+                    <!-- Formspree renders {{quote}} as a multi-line text block -->
+                    <pre style="margin:0;font-size:13px;color:#ccc;line-height:1.8;
+                                font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                                white-space:pre-wrap;word-break:break-word">{{quote}}</pre>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Parts total -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="border-top:1px solid rgba(84,242,229,0.3);padding-top:16px;margin-bottom:24px">
+                <tr>
+                  <td style="padding-top:16px;font-size:20px;font-weight:800;color:#ffffff">
+                    Parts Total
+                  </td>
+                  <td align="right" style="padding-top:16px;font-size:20px;font-weight:800;color:#54f2e5">
+                    {{parts_total}}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Note (conditional — Formspree omits block if field is empty) -->
+              {{#note}}
+              <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="background:rgba(255,255,255,0.03);border:1px solid rgba(86,5,145,0.3);
+                            border-radius:10px;margin-bottom:20px">
+                <tr>
+                  <td style="padding:14px 18px">
+                    <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.08em;
+                               text-transform:uppercase;color:#666">Your Note</p>
+                    <p style="margin:0;font-size:14px;color:#ccc;line-height:1.6">{{note}}</p>
+                  </td>
+                </tr>
+              </table>
+              {{/note}}
+
+            </td>
+          </tr>
+
+          <!-- ── What happens next ── -->
+          <tr>
+            <td style="padding:0 48px 36px">
+              <p style="margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:0.1em;
+                          text-transform:uppercase;color:#666;border-bottom:1px solid rgba(86,5,145,0.35);
+                          padding-bottom:10px">
+                What Happens Next
+              </p>
+
+              <!-- Step 1 -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px">
+                <tr>
+                  <td width="36" valign="top">
+                    <span style="display:inline-block;width:26px;height:26px;background:rgba(84,242,229,0.12);
+                                 border:1px solid rgba(84,242,229,0.35);border-radius:50%;text-align:center;
+                                 line-height:26px;font-size:13px;font-weight:800;color:#54f2e5">1</span>
+                  </td>
+                  <td valign="top" style="padding-top:3px">
+                    <strong style="font-size:14px;color:#fff">File review</strong><br>
+                    <span style="font-size:13px;color:#888;line-height:1.6">
+                      Our engineers check your models for printability and flag any issues.
+                    </span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Step 2 -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px">
+                <tr>
+                  <td width="36" valign="top">
+                    <span style="display:inline-block;width:26px;height:26px;background:rgba(84,242,229,0.12);
+                                 border:1px solid rgba(84,242,229,0.35);border-radius:50%;text-align:center;
+                                 line-height:26px;font-size:13px;font-weight:800;color:#54f2e5">2</span>
+                  </td>
+                  <td valign="top" style="padding-top:3px">
+                    <strong style="font-size:14px;color:#fff">Confirmed quote</strong><br>
+                    <span style="font-size:13px;color:#888;line-height:1.6">
+                      We'll email you a final, confirmed price — usually within 1 business day.
+                    </span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Step 3 -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td width="36" valign="top">
+                    <span style="display:inline-block;width:26px;height:26px;background:rgba(84,242,229,0.12);
+                                 border:1px solid rgba(84,242,229,0.35);border-radius:50%;text-align:center;
+                                 line-height:26px;font-size:13px;font-weight:800;color:#54f2e5">3</span>
+                  </td>
+                  <td valign="top" style="padding-top:3px">
+                    <strong style="font-size:14px;color:#fff">Production &amp; shipping</strong><br>
+                    <span style="font-size:13px;color:#888;line-height:1.6">
+                      Once approved, we print and ship your parts to your door.
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ── CTA ── -->
+          <tr>
+            <td style="padding:0 48px 40px;text-align:center">
+              <a href="https://mithrilplastics.com"
+                 style="display:inline-block;padding:16px 40px;background:#560591;color:#ffffff;
+                        text-decoration:none;border-radius:10px;font-size:15px;font-weight:800;
+                        letter-spacing:0.04em">
+                Visit Mithril Plastics
+              </a>
+            </td>
+          </tr>
+
+          <!-- ── Footer ── -->
+          <tr>
+            <td style="padding:24px 48px;border-top:1px solid rgba(86,5,145,0.4);
+                        background:rgba(86,5,145,0.06)">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td>
+                    <p style="margin:0;font-size:12px;color:#555;line-height:1.6">
+                      Mithril Plastics &mdash; Brea, CA 92821<br>
+                      This is an automated confirmation. Please do not reply to this email.<br>
+                      <span style="color:#444">Prices shown are estimates only and subject to final review.</span>
+                    </p>
+                  </td>
+                  <td align="right" valign="top">
+                    <img src="https://cdn.prod.website-files.com/68dc75f5161ad85e0cd30bd2/69fe4fbbd1c90020242cf636_logo.gif"
+                         alt="Mithril Plastics" height="28" style="display:block;height:28px;width:auto;opacity:0.4">
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /Card -->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+
+<!--
+  ════════════════════════════════════════════════════════════════════
+  HOW TO ACTIVATE THE CUSTOMER CONFIRMATION EMAIL
+  ════════════════════════════════════════════════════════════════════
+
+  1. Log in to formspree.io → open your form → click "Plugins"
+  2. Enable "Auto-Response"
+  3. Set:
+       Reply-to field  →  email
+       Subject         →  Quote Request Confirmed — Mithril Plastics
+  4. Paste the HTML above (everything before this comment) into the
+     "Email body (HTML)" editor, then save.
+
+  Formspree merge tags used in this template:
+    {{name}}         – customer's full name
+    {{process}}      – FDM or SLA
+    {{material}}     – selected material label
+    {{lead_time}}    – estimated lead time
+    {{quote}}        – file list: name | volume | qty | price
+    {{parts_total}}  – parts subtotal (e.g. $42.00)
+    {{note}}         – optional note from the customer
+    {{#note}}...{{/note}} – conditional block, hidden if note is empty
+
+  The widget already sends _replyto = customer's email, which
+  Formspree uses to route the auto-response correctly.
+  ════════════════════════════════════════════════════════════════════
+-->

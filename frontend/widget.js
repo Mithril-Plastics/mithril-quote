@@ -718,6 +718,7 @@ function renderQuote() {
         '<input class="mq-inp" id="mq-c-name"    type="text"  placeholder="Full name *"        autocomplete="name">' +
         '<input class="mq-inp" id="mq-c-company" type="text"  placeholder="Company (optional)" autocomplete="organization">' +
         '<input class="mq-inp" id="mq-c-email"   type="email" placeholder="Email address *"    autocomplete="email">' +
+        '<input class="mq-inp" id="mq-c-phone"   type="tel"   placeholder="Phone number (optional)" autocomplete="tel">' +
         '<p class="mq-contact-heading" style="margin-top:8px">Add a note</p>' +
         '<textarea class="mq-inp mq-note" id="mq-c-note" placeholder="Are there any details we should know about, such as print orientation or how the prints will be used?"></textarea>' +
       '</div>' +
@@ -729,7 +730,7 @@ function renderQuote() {
         '<div class="mq-addr-row">' +
           '<input class="mq-inp" id="mq-addr-zip"   type="text" placeholder="ZIP code"  maxlength="10" autocomplete="postal-code">' +
           '<input class="mq-inp" id="mq-addr-city"  type="text" placeholder="City"                     autocomplete="address-level2">' +
-          '<input class="mq-inp" id="mq-addr-state" type="text" placeholder="State"     maxlength="2"  autocomplete="address-level1">' +
+          stateSelectHTML('mq-addr-state') +
         '</div>' +
         '<div id="mq-zip-err" style="display:none"></div>' +
         '<div id="mq-ship-opts" style="display:none"></div>' +
@@ -797,10 +798,13 @@ function renderQuote() {
       updateOrderTotal();
     }
   });
-  ['mq-addr-street', 'mq-addr-city', 'mq-addr-state'].forEach(function(id) {
+  ['mq-addr-street', 'mq-addr-city'].forEach(function(id) {
     document.getElementById(id).addEventListener('input', function() {
       S.address[id.replace('mq-addr-', '')] = this.value.trim();
     });
+  });
+  document.getElementById('mq-addr-state').addEventListener('change', function() {
+    S.address.state = this.value;
   });
 
   // ── Quote form submission ─────────────────────────────────────────────────────
@@ -808,10 +812,12 @@ function renderQuote() {
     var nameEl    = document.getElementById('mq-c-name');
     var emailEl   = document.getElementById('mq-c-email');
     var companyEl = document.getElementById('mq-c-company');
+    var phoneEl   = document.getElementById('mq-c-phone');
     var errEl     = document.getElementById('mq-submit-err');
     var name    = nameEl.value.trim();
     var email   = emailEl.value.trim();
     var company = companyEl.value.trim();
+    var phone   = phoneEl ? phoneEl.value.trim() : '';
     var note    = document.getElementById('mq-c-note').value.trim();
 
     nameEl.classList.remove('error'); emailEl.classList.remove('error');
@@ -827,7 +833,9 @@ function renderQuote() {
     var fd = new FormData();
     fd.append('name',        name);
     fd.append('email',       email);
+    fd.append('_replyto',    email); // triggers Formspree auto-response to customer
     if (company) fd.append('company', company);
+    if (phone)   fd.append('phone',   phone);
     fd.append('process',     S.process);
     fd.append('material',    S.materialLabel);
     fd.append('quote',       filesSummary());
@@ -852,9 +860,15 @@ function renderQuote() {
       .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
       .then(function(r) {
         if (r.ok) {
-          document.getElementById('mq-form-body').style.display  = 'none';
-          document.getElementById('mq-req-btn').style.display    = 'none';
-          document.getElementById('mq-success').style.display    = 'block';
+          var succEl = document.getElementById('mq-success');
+          document.getElementById('mq-form-body').style.display = 'none';
+          document.getElementById('mq-req-btn').style.display   = 'none';
+          succEl.innerHTML =
+            '<div class="mq-success-icon">✅</div>' +
+            '<h3>Quote request received!</h3>' +
+            '<p>We\'ll review your files and follow up within one business day.</p>' +
+            '<p class="mq-success-email">A confirmation has been sent to <strong>' + email + '</strong></p>';
+          succEl.style.display = 'block';
         } else {
           btn.disabled = false; btn.textContent = 'Submit Quote Request →';
           errEl.innerHTML = '<p class="mq-submit-err">' + (r.data.error || 'Submission failed — please try again.') + '</p>';
@@ -909,6 +923,20 @@ function renderDiscountBar(items) {
     var max = el.dataset.max ? +el.dataset.max : Infinity;
     el.classList.toggle('active', totalQty >= min && totalQty <= max);
   });
+}
+
+// ── STATE SELECT ─────────────────────────────────────────────────────────────
+function stateSelectHTML(id) {
+  var st = [
+    'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN',
+    'IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH',
+    'NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT',
+    'VT','VA','WA','WV','WI','WY',
+  ];
+  return '<select class="mq-inp mq-select" id="' + id + '" autocomplete="address-level1">' +
+    '<option value="">State</option>' +
+    st.map(function(s) { return '<option value="' + s + '">' + s + '</option>'; }).join('') +
+    '</select>';
 }
 
 // ── SHIPPING HELPERS ──────────────────────────────────────────────────────────
