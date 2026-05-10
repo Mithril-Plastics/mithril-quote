@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mithril Quote Widget — Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Khula:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PART 1 — widget-head.html (CDN scripts + CSS)
+  ═══════════════════════════════════════════════════════════ -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+  <style>
+  body { margin: 0; padding: 40px 20px; background: #06000f; font-family: 'Khula', sans-serif; }
+  .preview-label {
+    text-align: center; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; color: #54f2e5;
+    opacity: 0.5; margin-bottom: 24px;
+  }
+  </style>
+
+  <style>
+  #mq *{box-sizing:border-box;font-family:'Khula',sans-serif}
+  #mq{max-width:780px;margin:0 auto;background:#0c0118;border:1px solid #560591;border-radius:18px;box-shadow:0 0 50px rgba(86,5,145,.45),0 0 100px rgba(84,242,229,.07)}
+  .mq-brand-header{display:flex;align-items:center;justify-content:space-between;padding:34px 48px 32px;border-bottom:1px solid rgba(86,5,145,.5)}
+  .mq-brand-logo img{height:42px;width:auto;display:block}
+  .mq-brand-tag{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#54f2e5;background:rgba(84,242,229,.1);border:1px solid rgba(84,242,229,.3);border-radius:4px;padding:8px 16px}
+  .mq-steps{display:flex;background:#100020;border-bottom:1px solid rgba(86,5,145,.5);overflow:hidden}
+  .mq-step{flex:1;padding:26px 12px;text-align:center;font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#666;border-bottom:3px solid transparent;transition:color .2s,border-color .2s}
+  .mq-step.active{color:#54f2e5;border-bottom-color:#54f2e5}
+  .mq-step.done{color:#9040d0;border-bottom-color:#9040d0}
+  .mq-body{padding:36px 48px 48px}
+  .mq-heading{font-size:20px;font-weight:800;color:#fff;margin-bottom:22px;letter-spacing:.02em}
+  .mq-drop{border:2.5px dashed rgba(86,5,145,.7);border-radius:14px;padding:60px 36px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s,box-shadow .2s;background:rgba(86,5,145,.05);position:relative}
+  .mq-drop:hover,.mq-drop.over{border-color:#54f2e5;background:rgba(84,242,229,.06);box-shadow:0 0 28px rgba(84,242,229,.12),inset 0 0 40px rgba(84,242,229,.04)}
+  .mq-drop.over{border-style:solid}
+  .mq-drop-icon{font-size:52px;display:block;margin-bottom:18px}
+  .mq-drop-headline{font-size:18px;font-weight:800;color:#fff;margin-bottom:8px}
+  .mq-drop-sub{font-size:15px;color:#ccc;line-height:1.6}
+  .mq-drop strong{color:#54f2e5}
+  .mq-drop .mq-formats{font-size:13px;color:#7868a8;margin-top:14px;letter-spacing:.06em}
+  .mq-drop-cta{display:inline-block;margin-top:22px;padding:12px 32px;border:1.5px solid rgba(84,242,229,.5);border-radius:8px;background:rgba(84,242,229,.07);color:#54f2e5;font-size:14px;font-weight:700;letter-spacing:.04em;transition:background .15s,border-color .15s}
+  .mq-drop:hover .mq-drop-cta,.mq-drop.over .mq-drop-cta{background:rgba(84,242,229,.14);border-color:#54f2e5}
+  .mq-upload-header{text-align:center;margin-bottom:30px;padding:10px 0 28px;border-bottom:1px solid rgba(86,5,145,.25)}
+  .mq-upload-count{font-size:34px;font-weight:800;color:#fff;line-height:1.2}
+  .mq-upload-status{font-size:17px;font-weight:700;color:#54f2e5;margin-top:8px}
+  .mq-upload-hint{font-size:14px;color:#777;margin-top:10px;line-height:1.7}
+  .mq-drop-more{display:flex;align-items:center;justify-content:center;gap:12px;border:1.5px dashed rgba(84,242,229,.4);border-radius:12px;padding:20px 28px;margin-bottom:28px;cursor:pointer;color:#54f2e5;font-size:17px;font-weight:700;transition:background .2s,border-color .2s,box-shadow .2s;background:rgba(84,242,229,.03)}
+  .mq-drop-more:hover,.mq-drop-more.over{background:rgba(84,242,229,.08);border-color:#54f2e5;box-shadow:0 0 16px rgba(84,242,229,.1)}
+  .mq-sel-row{margin-bottom:16px;padding:4px 0}
+  .mq-selected-count{font-size:15px;font-weight:700;color:#fff}
+  .mq-controls-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;background:rgba(86,5,145,.08);border:1px solid rgba(86,5,145,.3);border-radius:12px;padding:16px 22px;margin-bottom:24px}
+  .mq-controls-left{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+  .mq-controls-right{display:flex;align-items:center;gap:10px}
+  .mq-unit-label{font-size:14px;color:#888}
+  .mq-unit-label strong{color:#ccc;font-weight:600}
+  .mq-global-qty{display:flex;align-items:center;gap:12px}
+  .mq-global-qty-label{font-size:14px;color:#888}
+  .mq-toolbar-btn{background:none;border:1px solid rgba(86,5,145,.45);border-radius:8px;color:#a0a0a0;font-size:13px;font-weight:700;padding:9px 18px;cursor:pointer;font-family:'Khula',sans-serif;transition:all .15s;white-space:nowrap;letter-spacing:.03em}
+  .mq-toolbar-btn:hover{border-color:#54f2e5;color:#54f2e5}
+  .mq-toolbar-btn.danger:hover{border-color:#ea384c;color:#ea384c}
+  .mq-stepper{display:inline-flex;align-items:center;border:1px solid rgba(86,5,145,.5);border-radius:8px;overflow:hidden}
+  .mq-stepper button{width:36px;height:36px;background:rgba(86,5,145,.2);border:none;font-size:18px;cursor:pointer;color:#ccc;transition:background .15s;font-family:'Khula',sans-serif;line-height:1}
+  .mq-stepper button:hover{background:rgba(86,5,145,.45);color:#54f2e5}
+  .mq-stepper input{width:46px;height:36px;border:none;border-left:1px solid rgba(86,5,145,.4);border-right:1px solid rgba(86,5,145,.4);text-align:center;font-size:15px;font-weight:700;color:#fff;background:#0c0118;outline:none;font-family:'Khula',sans-serif;-moz-appearance:textfield}
+  .mq-stepper input::-webkit-inner-spin-button,.mq-stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .mq-cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:32px}
+  .mq-card{background:rgba(86,5,145,.07);border:1px solid rgba(86,5,145,.35);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:0;transition:border-color .15s,background .15s}
+  .mq-card.selected{border-color:rgba(84,242,229,.5);background:rgba(84,242,229,.05)}
+  .mq-card-header{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+  .mq-card-name{flex:1;font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mq-card-del{background:none;border:none;color:#555;cursor:pointer;font-size:17px;padding:6px 4px;transition:color .15s;line-height:1;flex-shrink:0}
+  .mq-card-del:hover{color:#ea384c}
+  .mq-card-body{display:flex;gap:18px;align-items:flex-start;margin-bottom:18px}
+  .mq-card-thumb{width:88px;height:88px;flex-shrink:0;background:#06000f;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid rgba(86,5,145,.25)}
+  .mq-card-thumb img{width:100%;height:100%;object-fit:contain}
+  .mq-card-thumb-placeholder{font-size:28px}
+  .mq-card-info{flex:1;display:flex;flex-direction:column;gap:7px;padding-top:4px}
+  .mq-card-dims{font-size:13px;color:#54f2e5;letter-spacing:.01em}
+  .mq-card-vol{font-size:13px;color:#888}
+  .mq-card-footer{display:flex;align-items:center;border-top:1px solid rgba(86,5,145,.2);padding-top:16px}
+  .mq-card-footer .mq-stepper button{width:32px;height:32px;font-size:16px}
+  .mq-card-footer .mq-stepper input{width:38px;height:32px;font-size:14px}
+  .mq-toggle{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
+  .mq-toggle input{opacity:0;width:0;height:0;position:absolute}
+  .mq-toggle-slider{position:absolute;inset:0;background:rgba(255,255,255,.12);border-radius:22px;transition:background .2s;cursor:pointer}
+  .mq-toggle-slider:before{content:'';position:absolute;width:16px;height:16px;background:#666;border-radius:50%;top:3px;left:3px;transition:transform .2s,background .2s}
+  .mq-toggle input:checked+.mq-toggle-slider{background:rgba(84,242,229,.28)}
+  .mq-toggle input:checked+.mq-toggle-slider:before{transform:translateX(18px);background:#54f2e5}
+  .mq-err{background:rgba(234,56,76,.08);border:1px solid rgba(234,56,76,.35);color:#ea384c;border-radius:10px;padding:14px 18px;font-size:14px;margin-top:14px}
+  .mq-warn{background:rgba(255,180,50,.07);border:1px solid rgba(255,180,50,.3);color:#e0b870;border-radius:10px;padding:14px 18px;font-size:14px;margin-top:16px;line-height:1.6}
+  .mq-screen{display:none}
+  .mq-screen.on{display:block}
+  .mq-back{display:inline-flex;align-items:center;gap:6px;background:rgba(86,5,145,.12);border:1px solid rgba(86,5,145,.45);border-radius:8px;color:#a8a8a8;font-size:13px;font-weight:700;letter-spacing:.03em;cursor:pointer;padding:8px 18px;margin-bottom:24px;font-family:'Khula',sans-serif;transition:border-color .15s,background .15s,color .15s}
+  .mq-back:hover{border-color:#54f2e5;color:#54f2e5;background:rgba(84,242,229,.07)}
+  .mq-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .mq-grid-4{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .mq-opt{padding:18px 18px 16px;border:1px solid rgba(86,5,145,.45);border-radius:11px;background:rgba(86,5,145,.08);cursor:pointer;font-size:16px;font-weight:700;color:#f0f0f0;text-align:left;line-height:1.3;transition:border-color .15s,background .15s,color .15s,box-shadow .15s;font-family:'Khula',sans-serif}
+  .mq-opt:hover:not(:disabled){border-color:#54f2e5;color:#54f2e5;background:rgba(84,242,229,.07);box-shadow:0 0 16px rgba(84,242,229,.12)}
+  .mq-opt:disabled{opacity:.25;cursor:not-allowed}
+  .mq-opt small{display:block;font-size:13px;font-weight:400;color:#b8b8b8;margin-top:7px;line-height:1.5}
+  .mq-mat-group-label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#666;margin:24px 0 10px;padding-bottom:8px;border-bottom:1px solid rgba(86,5,145,.3)}
+  .mq-mat-group-label:first-child{margin-top:4px}
+  .mq-mat-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px}
+  .mq-mat-name{font-size:16px;font-weight:700;line-height:1.2}
+  .mq-mat-cost{font-size:13px;font-weight:700;letter-spacing:.04em;flex-shrink:0}
+  .mq-cost-filled{color:#54f2e5}
+  .mq-cost-empty{color:rgba(255,255,255,.13)}
+  .mq-quote-meta{display:flex;justify-content:space-between;align-items:center;background:rgba(86,5,145,.15);border:1px solid rgba(86,5,145,.4);border-radius:11px;padding:16px 20px;margin-bottom:18px;font-size:14px;color:#ccc}
+  .mq-quote-meta strong{color:#54f2e5;font-size:15px}
+  .mq-fl-header{display:grid;grid-template-columns:1fr 110px 140px 72px;gap:12px;padding:8px 0 10px;border-bottom:1px solid rgba(86,5,145,.35);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#888}
+  .mq-fl-header>*:not(:first-child){text-align:right}
+  .mq-fl{display:grid;grid-template-columns:1fr 110px 140px 72px;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(86,5,145,.2)}
+  .mq-fl:last-child{border-bottom:none}
+  .mq-fl-name{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mq-fl-sub{font-size:13px;color:#a8a8a8;margin-top:3px}
+  .mq-fl-vol{font-size:14px;color:#ccc;text-align:right;white-space:nowrap}
+  .mq-fl-qty{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+  .mq-fl-price{font-size:15px;font-weight:800;color:#54f2e5;text-align:right;white-space:nowrap}
+  .mq-badge{background:rgba(84,242,229,.12);color:#54f2e5;border:1px solid rgba(84,242,229,.35);border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700}
+  .mq-discount-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(84,242,229,.04);border:1px solid rgba(84,242,229,.14);border-radius:10px;padding:10px 14px;margin:4px 0 16px}
+  .mq-discount-bar-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#666;white-space:nowrap;margin-right:2px}
+  .mq-discount-tier{font-size:12px;font-weight:700;color:#555;padding:3px 10px;border-radius:99px;border:1px solid rgba(86,5,145,.3);white-space:nowrap;transition:color .15s,border-color .15s,background .15s}
+  .mq-discount-tier.active{color:#54f2e5;border-color:rgba(84,242,229,.45);background:rgba(84,242,229,.1)}
+  .mq-grand-row{display:flex;justify-content:space-between;align-items:baseline;padding-top:18px;margin-top:12px;border-top:1px solid rgba(84,242,229,.3);font-weight:800;font-size:22px;color:#fff;margin-bottom:24px}
+  .mq-grand-row span:last-child{color:#54f2e5}
+  .mq-cta-wrap{text-align:center;padding-top:8px}
+  .mq-cta{display:inline-block;padding:20px 56px;background:#560591;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:800;letter-spacing:.04em;cursor:pointer;transition:background .15s,box-shadow .15s;font-family:'Khula',sans-serif}
+  .mq-cta:hover{background:#6b0ab5;box-shadow:0 0 28px rgba(86,5,145,.75)}
+  .mq-cta:disabled{opacity:.45;cursor:not-allowed}
+  .mq-footnote{text-align:center;font-size:13px;color:#888;margin-top:16px}
+  .mq-contact-heading{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#ccc;margin-bottom:12px;padding-top:6px}
+  #mq .mq-inp{display:block;width:100%;padding:13px 16px;margin-bottom:12px;border:1px solid rgba(86,5,145,.45);border-radius:10px;font-size:15px;color:#fff;font-family:'Khula',sans-serif;background:rgba(86,5,145,.08);outline:none;transition:border-color .15s,box-shadow .15s}
+  #mq .mq-inp:focus{border-color:#54f2e5;box-shadow:0 0 0 3px rgba(84,242,229,.12)}
+  #mq .mq-inp::placeholder{color:#888}
+  #mq .mq-inp.error{border-color:#ea384c}
+  #mq .mq-note{resize:vertical;min-height:90px;line-height:1.6}
+  .mq-submit-err{color:#ea384c;font-size:14px;margin-bottom:12px}
+  .mq-success{text-align:center;padding:40px 28px;margin-top:10px;background:rgba(84,242,229,.06);border:1px solid rgba(84,242,229,.3);border-radius:12px}
+  .mq-success-icon{font-size:42px;margin-bottom:14px}
+  .mq-success h3{font-size:18px;font-weight:800;color:#54f2e5;margin-bottom:8px}
+  .mq-success p{font-size:15px;color:#ccc;line-height:1.6}
+  .mq-loader{text-align:center;padding:60px 20px;color:#a8a8a8;font-size:15px}
+  @keyframes mq-spin{to{transform:rotate(360deg)}}
+  .mq-spinner{width:36px;height:36px;border:2px solid rgba(86,5,145,.3);border-top-color:#54f2e5;border-radius:50%;animation:mq-spin .75s linear infinite;margin:0 auto 20px}
+  .mq-shipping-section{margin-top:28px;padding-top:24px;border-top:1px solid rgba(86,5,145,.25)}
+  .mq-addr-row{display:grid;grid-template-columns:130px 1fr 90px;gap:10px}
+  .mq-ship-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 8px}
+  .mq-ship-opt{border:1px solid rgba(86,5,145,.35);border-radius:11px;padding:14px 16px;cursor:pointer;background:rgba(86,5,145,.08);transition:border-color .15s,background .15s;text-align:center}
+  .mq-ship-opt:hover{border-color:rgba(84,242,229,.45);background:rgba(84,242,229,.05)}
+  .mq-ship-opt.selected{border-color:#54f2e5;background:rgba(84,242,229,.09);box-shadow:0 0 14px rgba(84,242,229,.1)}
+  .mq-ship-opt-name{font-size:14px;font-weight:800;color:#fff;margin-bottom:4px}
+  .mq-ship-opt-days{font-size:12px;color:#888;margin-bottom:8px}
+  .mq-ship-opt-price{font-size:20px;font-weight:800;color:#54f2e5}
+  .mq-ship-note{font-size:12px;color:#666;margin-top:6px;line-height:1.5}
+  .mq-order-total{display:flex;justify-content:space-between;align-items:center;background:rgba(84,242,229,.06);border:1px solid rgba(84,242,229,.25);border-radius:11px;padding:16px 20px;margin:16px 0 4px;font-size:15px;color:#ccc}
+  .mq-order-total strong{color:#54f2e5;font-size:20px;font-weight:800}
+  @media(max-width:580px){
+    .mq-body{padding:28px 24px 36px}
+    .mq-brand-header{padding:26px 24px}
+    .mq-step{font-size:12px;padding:20px 6px}
+    .mq-card{padding:16px}
+    .mq-cards-grid{grid-template-columns:1fr}
+    .mq-controls-bar{flex-direction:column;align-items:flex-start}
+    .mq-controls-right{width:100%;justify-content:flex-end}
+    .mq-cta{padding:18px 36px}
+    .mq-grid-2,.mq-grid-4{grid-template-columns:1fr}
+    .mq-fl-header,.mq-fl{grid-template-columns:1fr auto auto}
+    .mq-fl-vol{display:none}
+    .mq-fl-header>:nth-child(2){display:none}
+    .mq-addr-row{grid-template-columns:1fr}
+    .mq-ship-opts{grid-template-columns:1fr}
+  }
+  </style>
+</head>
+<body>
+  <p class="preview-label">Quote Widget Preview — Mock Mode Active</p>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       PART 2 — widget-embed.html
+  ═══════════════════════════════════════════════════════════ -->
+
+<div id="mq">
+  <div class="mq-brand-header">
+    <div class="mq-brand-logo"><img src="https://cdn.prod.website-files.com/68dc75f5161ad85e0cd30bd2/69fe4fbbd1c90020242cf636_logo.gif" alt="Mithril Plastics"></div>
+    <div class="mq-brand-tag">Instant Quote</div>
+  </div>
+  <div class="mq-steps">
+    <div class="mq-step active" id="mq-s1">1 · Upload</div>
+    <div class="mq-step"        id="mq-s2">2 · Process</div>
+    <div class="mq-step"        id="mq-s3">3 · Material</div>
+    <div class="mq-step"        id="mq-s4">4 · Quote</div>
+  </div>
+
+  <div class="mq-body">
+
+    <div class="mq-screen on" id="mq-upload">
+      <input type="file" id="mq-input" accept=".stl,.obj,.ply,.glb,.gltf" multiple style="display:none">
+
+      <div id="mq-empty-state">
+        <p class="mq-heading">Upload your 3D files</p>
+        <div class="mq-drop" id="mq-zone">
+          <span class="mq-drop-icon">📂</span>
+          <p class="mq-drop-headline">Drag &amp; drop your files here</p>
+          <p class="mq-drop-sub">or</p>
+          <span class="mq-drop-cta" id="mq-browse">Browse files</span>
+          <p class="mq-formats">STL · OBJ · PLY · GLB · GLTF</p>
+        </div>
+        <div id="mq-upload-err"></div>
+      </div>
+
+      <div id="mq-files-state" style="display:none">
+        <div class="mq-upload-header">
+          <div class="mq-upload-count" id="mq-model-count">0 models uploaded</div>
+          <div class="mq-upload-status">Ready to go!</div>
+          <div class="mq-upload-hint">Files are analysed locally — nothing leaves your device until you submit.</div>
+        </div>
+        <div class="mq-drop-more" id="mq-drop-more">
+          <span>⬆</span><span>Upload more files or drag and drop here</span>
+        </div>
+        <div class="mq-sel-row">
+          <span class="mq-selected-count" id="mq-sel-count">0 models selected</span>
+        </div>
+        <div class="mq-controls-bar">
+          <div class="mq-controls-left">
+            <span class="mq-unit-label">File unit: <strong>Millimeters (mm)</strong></span>
+            <div class="mq-global-qty">
+              <span class="mq-global-qty-label">Quantity:</span>
+              <div class="mq-stepper">
+                <button id="mq-g-dec">−</button>
+                <input type="number" id="mq-g-qty" value="1" min="1">
+                <button id="mq-g-inc">+</button>
+              </div>
+            </div>
+          </div>
+          <div class="mq-controls-right">
+            <button class="mq-toolbar-btn" id="mq-select-all">Select all files</button>
+            <button class="mq-toolbar-btn danger" id="mq-delete-sel">🗑 Delete</button>
+          </div>
+        </div>
+        <div class="mq-cards-grid" id="mq-cards-grid"></div>
+        <div id="mq-upload-err2"></div>
+        <div class="mq-cta-wrap">
+          <button class="mq-cta" id="mq-continue">See Materials &amp; Prices →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mq-screen" id="mq-process">
+      <button class="mq-back" id="mq-back-proc">&#8592; Back</button>
+      <p class="mq-heading">Select manufacturing process</p>
+      <div class="mq-grid-2">
+        <button class="mq-opt" id="mq-fdm" data-p="FDM">FDM<small>Fused Deposition Modeling — filament-based printing. Fast, affordable, wide material selection.</small></button>
+        <button class="mq-opt" id="mq-sla" data-p="SLA">SLA<small>Stereolithography — resin-based printing. Ultra-fine detail and smooth surface finish.</small></button>
+      </div>
+      <div id="mq-proc-warn"></div>
+    </div>
+
+    <div class="mq-screen" id="mq-material">
+      <button class="mq-back" id="mq-back-mat">&#8592; Back</button>
+      <p class="mq-heading">Select material</p>
+      <div id="mq-mat-grid"></div>
+      <div id="mq-mat-err"></div>
+    </div>
+
+    <div class="mq-screen" id="mq-quote">
+      <button class="mq-back" id="mq-back-quote">&#8592; Back</button>
+      <p class="mq-heading">Your instant quote</p>
+      <div id="mq-quote-body"></div>
+    </div>
+
+    <div class="mq-screen" id="mq-loading">
+      <div class="mq-loader">
+        <div class="mq-spinner"></div>
+        <p id="mq-load-txt">Analysing files…</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API_BASE      = 'https://YOUR-BACKEND.railway.app';
+const QUOTE_EMAIL   = 'quotes@mithrilplastics.com';
+const MOCK_MODE     = true;
+const FORMSPREE_URL = 'https://formspree.io/f/mojrlbvn';
+
+const BUILD_VOL = {
+  FDM: { x: 254, y: 254, z: 254 },
+  SLA: { x: 298, y: 164, z: 300 },
+};
+
+const MATERIALS = {
+  FDM: [
+    { key: 'PLA',      label: 'PLA',               group: 'Standard',    cost: 1, desc: 'Rigid, low warping, easy to print. Best for prototypes and display models.' },
+    { key: 'PETG',     label: 'PETG',              group: 'Standard',    cost: 1, desc: 'Strong with good chemical resistance. Ideal for durable functional parts.' },
+    { key: 'ABS',      label: 'ABS',               group: 'Standard',    cost: 1, desc: 'Tough and heat-resistant. Great for enclosures and functional parts.' },
+    { key: 'ASA',      label: 'ASA',               group: 'Standard',    cost: 1, desc: 'UV and weather resistant. Ideal for outdoor and automotive parts.' },
+    { key: 'PET',      label: 'PET',               group: 'Standard',    cost: 1, desc: 'Stiff with low moisture absorption. Good for housings and containers.' },
+    { key: 'TPU',      label: 'TPU',               group: 'Standard',    cost: 2, desc: 'Flexible and rubber-like. Perfect for gaskets, grips, and wearables.' },
+    { key: 'Nylon',    label: 'Nylon (PA12)',      group: 'Engineering', cost: 2, desc: 'Impact-resistant with low friction. Best for gears and load-bearing parts.' },
+    { key: 'PC',       label: 'Polycarbonate',     group: 'Engineering', cost: 2, desc: 'Extremely tough and heat-resistant. For demanding mechanical and electrical parts.' },
+    { key: 'PLA-CF',   label: 'PLA Carbon Fiber',  group: 'Composite',   cost: 3, desc: 'Lightweight and rigid. Best for stiff structural prototypes and cosmetic parts.' },
+    { key: 'PETG-CF',  label: 'PETG Carbon Fiber', group: 'Composite',   cost: 3, desc: 'Rigid and dimensionally stable. For load-bearing assemblies and brackets.' },
+    { key: 'ABS-CF',   label: 'ABS Carbon Fiber',  group: 'Composite',   cost: 3, desc: 'High stiffness with excellent surface quality. For high-performance functional parts.' },
+    { key: 'ASA-CF',   label: 'ASA Carbon Fiber',  group: 'Composite',   cost: 3, desc: 'Weather resistant with added stiffness. For outdoor structural applications.' },
+    { key: 'TPU-CF',   label: 'TPU Carbon Fiber',  group: 'Composite',   cost: 3, desc: 'Semi-flexible with added stiffness. For wear-resistant flexible components.' },
+    { key: 'Nylon-CF', label: 'Nylon Carbon Fiber',group: 'Composite',   cost: 4, desc: 'Exceptional strength-to-weight ratio. For aerospace, robotics, and structural brackets.' },
+    { key: 'Nylon-GF', label: 'Nylon Glass Fiber', group: 'Composite',   cost: 4, desc: 'High stiffness and dimensional stability. For precision housings and mechanical parts.' },
+    { key: 'PC-GF',    label: 'PC Glass Fiber',    group: 'Composite',   cost: 4, desc: 'High strength and heat resistance. For structural enclosures and electrical components.' },
+  ],
+  SLA: [
+    { key: 'Standard',  label: 'Standard Resin',  group: 'Standard',  cost: 2, desc: 'Smooth finish and fine detail. Great for visual prototypes and display models.' },
+    { key: 'ABS-Like',  label: 'ABS-Like Resin',  group: 'Standard',  cost: 2, desc: 'Tough and impact-resistant. Great for functional prototypes and snap-fit housings.' },
+    { key: 'Clear',     label: 'Clear Resin',     group: 'Specialty', cost: 3, desc: 'Optically transparent when finished. Best for lenses, fluid channels, and displays.' },
+    { key: 'Flexible',  label: 'Flexible Resin',  group: 'Specialty', cost: 3, desc: 'Rubber-like flexibility and durability. For seals, grips, and soft prototypes.' },
+    { key: 'High Temp', label: 'High Temp Resin', group: 'Specialty', cost: 4, desc: 'Withstands up to ~289°C. For molds, jigs, and heat-exposed functional parts.' },
+  ],
+};
+
+const QTY_BREAKS = [
+  { min: 1,  max: 5,    pct: 0  },
+  { min: 6,  max: 20,   pct: 8  },
+  { min: 21, max: 50,   pct: 15 },
+  { min: 51, max: null, pct: 22 },
+];
+
+const MOCK_RATES = {
+  FDM: { machineRatePerHr: 2.50, cm3PerHr: 8,
+    mats: { 'PLA':0.15,'ABS':0.18,'PETG':0.17,'TPU':0.25,'Nylon':0.28,'ASA':0.20,'PET':0.16,'PC':0.32,
+            'PLA-CF':0.36,'ABS-CF':0.42,'PETG-CF':0.38,'TPU-CF':0.46,'Nylon-CF':0.58,'ASA-CF':0.44,'Nylon-GF':0.50,'PC-GF':0.54 } },
+  SLA: { machineRatePerHr: 5.00, cm3PerHr: 18,
+    mats: { 'Standard':0.30,'Clear':0.36,'High Temp':0.65,'ABS-Like':0.33,'Flexible':0.48 } },
+};
+
+const DENSITIES = {
+  FDM: { fillFactor: 0.20,
+    mats: { 'PLA':1.24,'ABS':1.04,'PETG':1.27,'TPU':1.21,'Nylon':1.01,'ASA':1.07,'PET':1.38,'PC':1.20,
+            'PLA-CF':1.18,'ABS-CF':1.12,'PETG-CF':1.20,'TPU-CF':1.18,'Nylon-CF':1.10,'ASA-CF':1.12,'Nylon-GF':1.15,'PC-GF':1.32 } },
+  SLA: { fillFactor: 1.0,
+    mats: { 'Standard':1.10,'Clear':1.12,'High Temp':1.14,'ABS-Like':1.08,'Flexible':1.15 } },
+};
+
+// Origin: Brea, CA 92821
+const ZIP2_ZONE = {
+  '00':8,'01':8,'02':8,'03':8,'04':8,'05':8,'06':8,'07':8,'08':8,'09':8,
+  '10':8,'11':8,'12':8,'13':8,'14':8,'15':8,'16':8,'17':8,'18':8,'19':8,
+  '20':8,'21':8,'22':8,'23':8,'24':8,'25':8,'26':8,'27':8,'28':8,'29':8,
+  '30':8,'31':8,'32':8,'33':8,'34':8,'35':7,'36':7,'37':7,'38':7,'39':7,
+  '40':7,'41':7,'42':7,'43':7,'44':7,'45':7,'46':7,'47':7,'48':7,'49':7,
+  '50':7,'51':7,'52':7,'53':7,'54':7,'55':7,'56':7,'57':7,'58':7,'59':6,
+  '60':7,'61':7,'62':7,'63':7,'64':7,'65':7,'66':6,'67':6,'68':6,'69':6,
+  '70':6,'71':6,'72':6,'73':6,'74':6,'75':7,'76':7,'77':7,'78':6,'79':5,
+  '80':6,'81':6,'82':5,'83':5,'84':5,'85':4,'86':4,'87':5,'88':5,'89':3,
+  '90':2,'91':2,'92':2,'93':3,'94':4,'95':4,'96':4,'97':5,'98':6,'99':6,
+};
+
+const SHIP_RATES = {
+  Ground: {
+    days: '5–7',
+    zones: {
+      2:{base:9.50,perLb:0.30}, 3:{base:10.50,perLb:0.42},
+      4:{base:12.00,perLb:0.55}, 5:{base:13.50,perLb:0.68},
+      6:{base:15.00,perLb:0.82}, 7:{base:16.50,perLb:0.95},
+      8:{base:18.00,perLb:1.10},
+    }
+  },
+  Express: {
+    days: '2–3',
+    zones: {
+      2:{base:24.00,perLb:0.75}, 3:{base:27.00,perLb:1.00},
+      4:{base:31.00,perLb:1.30}, 5:{base:35.00,perLb:1.60},
+      6:{base:39.00,perLb:1.95}, 7:{base:44.00,perLb:2.30},
+      8:{base:49.00,perLb:2.70},
+    }
+  },
+  Overnight: {
+    days: '1',
+    zones: {
+      2:{base:48.00,perLb:1.50}, 3:{base:54.00,perLb:2.00},
+      4:{base:62.00,perLb:2.60}, 5:{base:70.00,perLb:3.20},
+      6:{base:78.00,perLb:3.90}, 7:{base:88.00,perLb:4.60},
+      8:{base:98.00,perLb:5.40},
+    }
+  },
+};
+
+const S = {
+  files: [],
+  process: null,
+  material: null,
+  materialLabel: '',
+  quote: null,
+  globalQty: 1,
+  shipping: null,
+  address: {},
+  quoteItems: null,
+};
+
+const STEP_MAP = { upload: 1, process: 2, material: 3, quote: 4, loading: null };
+function show(id) {
+  document.querySelectorAll('.mq-screen').forEach(function(el) { el.classList.remove('on'); });
+  document.getElementById('mq-' + id).classList.add('on');
+  var n = STEP_MAP[id];
+  [1,2,3,4].forEach(function(i) {
+    var el = document.getElementById('mq-s' + i);
+    el.classList.remove('active', 'done');
+    if (n) { if (i === n) el.classList.add('active'); else if (i < n) el.classList.add('done'); }
+  });
+}
+function setLoad(msg) { document.getElementById('mq-load-txt').textContent = msg; show('loading'); }
+
+function generateThumbnail(geometry) {
+  try {
+    var SIZE = 120;
+    var offCanvas = document.createElement('canvas');
+    offCanvas.width = offCanvas.height = SIZE;
+    var rend = new THREE.WebGLRenderer({ canvas: offCanvas, antialias: true, preserveDrawingBuffer: true });
+    rend.setSize(SIZE, SIZE);
+    rend.setClearColor(0x06000f, 1);
+    var sc = new THREE.Scene();
+    sc.add(new THREE.AmbientLight(0x9060c0, 0.6));
+    var sun = new THREE.DirectionalLight(0xd0b0ff, 0.9);
+    sun.position.set(1, 2, 3); sc.add(sun);
+    var fill = new THREE.DirectionalLight(0x54f2e5, 0.4);
+    fill.position.set(-2, -1, -2); sc.add(fill);
+    var geo = geometry.clone();
+    geo.computeBoundingBox(); geo.computeVertexNormals();
+    var box = new THREE.Box3().setFromBufferAttribute(geo.attributes.position);
+    var center = new THREE.Vector3(); box.getCenter(center);
+    var size = new THREE.Vector3(); box.getSize(size);
+    geo.translate(-center.x, -center.y, -center.z);
+    var mesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ color: 0x7c10e0, specular: 0x54f2e5, shininess: 90, side: THREE.DoubleSide }));
+    sc.add(mesh);
+    var cam = new THREE.PerspectiveCamera(45, 1, 0.001, 1e6);
+    var maxDim = Math.max(size.x, size.y, size.z) || 100;
+    var minDim = Math.min(size.x, size.y, size.z);
+    var flatness   = maxDim > 0 ? minDim / maxDim : 1;
+    var elevFactor = 0.4 + (1 - flatness) * 0.55;
+    var dist = (maxDim / Math.tan((45 * Math.PI / 180) / 2)) * 0.68;
+    cam.position.set(dist * 0.65, dist * elevFactor, dist);
+    cam.lookAt(0, 0, 0);
+    rend.render(sc, cam);
+    var url = offCanvas.toDataURL('image/png');
+    rend.dispose(); geo.dispose();
+    return url;
+  } catch(e) { return null; }
+}
+
+function selectedCount() { return S.files.filter(function(f) { return f.selected; }).length; }
+
+function updateHeader() {
+  var n = S.files.length;
+  document.getElementById('mq-model-count').textContent = n + ' model' + (n !== 1 ? 's' : '') + ' uploaded';
+  var sel = selectedCount();
+  document.getElementById('mq-sel-count').textContent = sel + ' model' + (sel !== 1 ? 's' : '') + ' selected';
+  document.getElementById('mq-empty-state').style.display  = n === 0 ? '' : 'none';
+  document.getElementById('mq-files-state').style.display  = n === 0 ? 'none' : '';
+}
+
+function renderCards() {
+  var grid = document.getElementById('mq-cards-grid');
+  grid.innerHTML = S.files.map(function(f, i) {
+    var thumbHtml = f.thumbnail
+      ? '<img src="' + f.thumbnail + '" alt="' + f.fileName + '">'
+      : '<span class="mq-card-thumb-placeholder">📐</span>';
+    var volMm3 = Math.round(f.volume * 1000).toLocaleString();
+    return (
+      '<div class="mq-card' + (f.selected ? ' selected' : '') + '" data-idx="' + i + '">' +
+        '<div class="mq-card-header">' +
+          '<label class="mq-toggle" title="Select">' +
+            '<input type="checkbox"' + (f.selected ? ' checked' : '') + ' data-toggle="' + i + '">' +
+            '<span class="mq-toggle-slider"></span>' +
+          '</label>' +
+          '<div class="mq-card-name" title="' + f.fileName + '">' + f.fileName + '</div>' +
+          '<button class="mq-card-del" data-del="' + i + '" title="Remove">🗑</button>' +
+        '</div>' +
+        '<div class="mq-card-body">' +
+          '<div class="mq-card-thumb">' + thumbHtml + '</div>' +
+          '<div class="mq-card-info">' +
+            '<div class="mq-card-dims">' + f.bbox.x + ' × ' + f.bbox.y + ' × ' + f.bbox.z + ' mm</div>' +
+            '<div class="mq-card-vol">' + volMm3 + ' mm³</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="mq-card-footer">' +
+          '<div class="mq-stepper">' +
+            '<button data-card-dec="' + i + '">−</button>' +
+            '<input type="number" min="1" value="' + f.qty + '" data-card-qty="' + i + '">' +
+            '<button data-card-inc="' + i + '">+</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }).join('');
+
+  grid.querySelectorAll('[data-toggle]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var idx = +cb.dataset.toggle;
+      S.files[idx].selected = cb.checked;
+      cb.closest('.mq-card').classList.toggle('selected', cb.checked);
+      updateHeader();
+    });
+  });
+  grid.querySelectorAll('[data-del]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) { e.stopPropagation(); removeFile(+btn.dataset.del); });
+  });
+  grid.querySelectorAll('[data-card-dec]').forEach(function(btn) {
+    btn.addEventListener('click', function() { applyCardQty(+btn.dataset.cardDec, S.files[+btn.dataset.cardDec].qty - 1); });
+  });
+  grid.querySelectorAll('[data-card-inc]').forEach(function(btn) {
+    btn.addEventListener('click', function() { applyCardQty(+btn.dataset.cardInc, S.files[+btn.dataset.cardInc].qty + 1); });
+  });
+  grid.querySelectorAll('[data-card-qty]').forEach(function(inp) {
+    inp.addEventListener('change', function() { applyCardQty(+inp.dataset.cardQty, +inp.value); });
+  });
+  updateHeader();
+}
+
+function applyCardQty(idx, val) {
+  val = Math.max(1, parseInt(val) || 1);
+  S.files[idx].qty = val;
+  var inp = document.querySelector('[data-card-qty="' + idx + '"]');
+  if (inp) inp.value = val;
+}
+
+function removeFile(idx) {
+  S.files.splice(idx, 1);
+  renderCards();
+  if (!S.files.length) updateHeader();
+}
+
+var thumbQueue = [], thumbRunning = false;
+function enqueueThumbnail(fileObj) { thumbQueue.push(fileObj); if (!thumbRunning) drainThumbQueue(); }
+function drainThumbQueue() {
+  if (!thumbQueue.length) { thumbRunning = false; return; }
+  thumbRunning = true;
+  var f = thumbQueue.shift();
+  setTimeout(function() {
+    f.thumbnail = generateThumbnail(f.geometry);
+    var cards = document.querySelectorAll('#mq-cards-grid .mq-card');
+    var idx = S.files.indexOf(f);
+    if (idx !== -1 && cards[idx]) {
+      var thumb = cards[idx].querySelector('.mq-card-thumb');
+      if (thumb && f.thumbnail) thumb.innerHTML = '<img src="' + f.thumbnail + '" alt="' + f.fileName + '">';
+    }
+    drainThumbQueue();
+  }, 20);
+}
+
+var SUPPORTED = ['stl', 'obj', 'ply', 'glb', 'gltf'];
+function readBuffer(file) {
+  return new Promise(function(res, rej) {
+    var r = new FileReader(); r.onload = function(e) { res(e.target.result); }; r.onerror = rej; r.readAsArrayBuffer(file);
+  });
+}
+
+function parseSTLToVerts(buffer) {
+  var view = new DataView(buffer);
+  var triCount = view.getUint32(80, true);
+  var looksLikeBinary = Math.abs(buffer.byteLength - (84 + triCount * 50)) < 4;
+  var headerText = new TextDecoder().decode(new Uint8Array(buffer, 0, 80));
+  if (headerText.trimStart().startsWith('solid') && !looksLikeBinary) {
+    var text = new TextDecoder().decode(buffer);
+    var re = /vertex\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)/g;
+    var c = [], m;
+    while ((m = re.exec(text)) !== null) c.push(+m[1], +m[2], +m[3]);
+    return new Float32Array(c);
+  }
+  var verts = new Float32Array(triCount * 9), src = 84, dst = 0;
+  for (var i = 0; i < triCount; i++) {
+    src += 12;
+    for (var j = 0; j < 9; j++) { verts[dst++] = view.getFloat32(src, true); src += 4; }
+    src += 2;
+  }
+  return verts;
+}
+
+function computeVolumeFromGeo(geo) {
+  var pos = geo.attributes.position, idx = geo.index, vol = 0;
+  var minX=1e9, minY=1e9, minZ=1e9, maxX=-1e9, maxY=-1e9, maxZ=-1e9;
+  function tri(i0,i1,i2) {
+    var x1=pos.getX(i0),y1=pos.getY(i0),z1=pos.getZ(i0);
+    var x2=pos.getX(i1),y2=pos.getY(i1),z2=pos.getZ(i1);
+    var x3=pos.getX(i2),y3=pos.getY(i2),z3=pos.getZ(i2);
+    vol += x1*(y2*z3-y3*z2)+y1*(z2*x3-z3*x2)+z1*(x2*y3-x3*y2);
+    minX=Math.min(minX,x1,x2,x3); maxX=Math.max(maxX,x1,x2,x3);
+    minY=Math.min(minY,y1,y2,y3); maxY=Math.max(maxY,y1,y2,y3);
+    minZ=Math.min(minZ,z1,z2,z3); maxZ=Math.max(maxZ,z1,z2,z3);
+  }
+  if (idx) { for (var i=0;i<idx.count;i+=3) tri(idx.getX(i),idx.getX(i+1),idx.getX(i+2)); }
+  else      { for (var i=0;i<pos.count;i+=3) tri(i,i+1,i+2); }
+  return { volume: +(Math.abs(vol)/6000).toFixed(4), bbox: { x:+(maxX-minX).toFixed(2),y:+(maxY-minY).toFixed(2),z:+(maxZ-minZ).toFixed(2) } };
+}
+
+function extractFirstGeometry(object) {
+  var geo = null;
+  object.traverse(function(child) { if (!geo && child.isMesh && child.geometry) geo = child.geometry; });
+  if (!geo) throw new Error('No geometry found');
+  return geo;
+}
+
+function fitsIn(bbox, process) {
+  var part  = [bbox.x,bbox.y,bbox.z].sort(function(a,b){return a-b;});
+  var build = Object.values(BUILD_VOL[process]).sort(function(a,b){return a-b;});
+  return part.every(function(d,i){return d<=build[i];});
+}
+
+function loadGeometry(buffer, ext) {
+  switch (ext) {
+    case 'stl': {
+      var verts = parseSTLToVerts(buffer);
+      if (!verts.length) throw new Error('empty');
+      var geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+      return Promise.resolve(geo);
+    }
+    case 'ply': return Promise.resolve(new THREE.PLYLoader().parse(buffer));
+    case 'obj': return Promise.resolve(extractFirstGeometry(new THREE.OBJLoader().parse(new TextDecoder().decode(buffer))));
+    case 'glb': case 'gltf': {
+      var blob = new Blob([buffer]), url = URL.createObjectURL(blob);
+      return new Promise(function(res,rej) {
+        new THREE.GLTFLoader().load(url, function(gltf) { URL.revokeObjectURL(url); res(extractFirstGeometry(gltf.scene)); }, undefined, rej);
+      });
+    }
+    default: return Promise.reject(new Error('Unsupported: .' + ext));
+  }
+}
+
+function parseOneFile(file) {
+  var ext = file.name.split('.').pop().toLowerCase();
+  if (!SUPPORTED.includes(ext)) return Promise.reject(Object.assign(new Error(), { name: file.name }));
+  return readBuffer(file).then(function(buffer) { return loadGeometry(buffer, ext); }).then(function(geometry) {
+    var result = computeVolumeFromGeo(geometry);
+    return { fileName:file.name, bbox:result.bbox, volume:result.volume,
+             fdmFits:fitsIn(result.bbox,'FDM'), slaFits:fitsIn(result.bbox,'SLA'),
+             qty:S.globalQty, selected:true, thumbnail:null, geometry:geometry, originalFile:file };
+  });
+}
+
+function handleFiles(fileList) {
+  var all = Array.from(fileList);
+  var supported   = all.filter(function(f){return SUPPORTED.includes(f.name.split('.').pop().toLowerCase());});
+  var unsupported = all.filter(function(f){return !SUPPORTED.includes(f.name.split('.').pop().toLowerCase());});
+  var errEl = document.getElementById('mq-upload-err'), errEl2 = document.getElementById('mq-upload-err2');
+  if (!supported.length) { errEl.innerHTML = '<div class="mq-err">Supported formats: STL, OBJ, PLY, GLB, GLTF</div>'; return; }
+  errEl.innerHTML = '';
+  setLoad(supported.length === 1 ? 'Loading ' + supported[0].name + '…' : 'Loading ' + supported.length + ' files…');
+  Promise.allSettled(supported.map(parseOneFile)).then(function(results) {
+    var ok     = results.filter(function(r){return r.status==='fulfilled';}).map(function(r){return r.value;});
+    var failed = results.filter(function(r){return r.status==='rejected';}).map(function(_,i){return supported[i].name;});
+    S.files.push.apply(S.files, ok);
+    show('upload'); renderCards();
+    ok.forEach(function(f){enqueueThumbnail(f);});
+    var msgs = [];
+    if (failed.length)      msgs.push('Could not load: ' + failed.join(', '));
+    if (unsupported.length) msgs.push('Unsupported: ' + unsupported.map(function(f){return f.name;}).join(', '));
+    if (errEl2) errEl2.innerHTML = msgs.length ? '<div class="mq-err">'+msgs.join('<br>')+'</div>' : '';
+  });
+}
+
+var input = document.getElementById('mq-input');
+var zone  = document.getElementById('mq-zone');
+zone.addEventListener('click', function(){input.click();});
+zone.addEventListener('dragover',  function(e){e.preventDefault();zone.classList.add('over');});
+zone.addEventListener('dragleave', function(){zone.classList.remove('over');});
+zone.addEventListener('drop', function(e){e.preventDefault();zone.classList.remove('over');handleFiles(e.dataTransfer.files);});
+var dropMore = document.getElementById('mq-drop-more');
+dropMore.addEventListener('click', function(){input.click();});
+dropMore.addEventListener('dragover',  function(e){e.preventDefault();dropMore.classList.add('over');});
+dropMore.addEventListener('dragleave', function(){dropMore.classList.remove('over');});
+dropMore.addEventListener('drop', function(e){e.preventDefault();dropMore.classList.remove('over');handleFiles(e.dataTransfer.files);});
+input.addEventListener('change', function(e){handleFiles(e.target.files);input.value='';});
+
+var gQtyInp = document.getElementById('mq-g-qty');
+function applyGlobalQty(val) {
+  val = Math.max(1, parseInt(val)||1); S.globalQty = val; gQtyInp.value = val;
+  S.files.forEach(function(f){f.qty=val;});
+  document.querySelectorAll('[data-card-qty]').forEach(function(inp){inp.value=val;});
+}
+document.getElementById('mq-g-dec').addEventListener('click', function(){applyGlobalQty(S.globalQty-1);});
+document.getElementById('mq-g-inc').addEventListener('click', function(){applyGlobalQty(S.globalQty+1);});
+gQtyInp.addEventListener('change', function(){applyGlobalQty(+gQtyInp.value);});
+
+document.getElementById('mq-select-all').addEventListener('click', function() {
+  var allSelected = S.files.every(function(f){return f.selected;});
+  S.files.forEach(function(f){f.selected=!allSelected;}); renderCards();
+});
+document.getElementById('mq-delete-sel').addEventListener('click', function() {
+  S.files = S.files.filter(function(f){return !f.selected;}); renderCards();
+  if (!S.files.length) updateHeader();
+});
+document.getElementById('mq-continue').addEventListener('click', function() {
+  if (!S.files.length) return; renderProcess(); show('process');
+});
+
+document.getElementById('mq-back-proc').addEventListener('click', function(){show('upload');});
+function renderProcess() {
+  var anyFDM = S.files.some(function(f){return f.fdmFits;}), anySLA = S.files.some(function(f){return f.slaFits;});
+  document.getElementById('mq-fdm').disabled = !anyFDM;
+  document.getElementById('mq-sla').disabled = !anySLA;
+  var warns = [], fdmSkip = S.files.filter(function(f){return !f.fdmFits;}).map(function(f){return f.fileName;}),
+      slaSkip = S.files.filter(function(f){return !f.slaFits;}).map(function(f){return f.fileName;});
+  if (fdmSkip.length && anyFDM) warns.push('FDM: '+fdmSkip.join(', ')+' exceed build volume and will be skipped.');
+  if (slaSkip.length && anySLA) warns.push('SLA: '+slaSkip.join(', ')+' exceed build volume and will be skipped.');
+  if (!anyFDM) warns.push('No files fit the FDM build volume (254 × 254 × 254 mm).');
+  if (!anySLA) warns.push('No files fit the SLA build volume (298 × 164 × 300 mm).');
+  document.getElementById('mq-proc-warn').innerHTML = warns.length ? '<div class="mq-warn">'+warns.join('<br>')+'</div>' : '';
+  ['mq-fdm','mq-sla'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    btn.onclick = function(){S.process=btn.dataset.p; renderMaterials(); show('material');};
+  });
+}
+
+document.getElementById('mq-back-mat').addEventListener('click', function(){show('process');});
+function costBadge(n) {
+  return '<span class="mq-mat-cost">' +
+    '<span class="mq-cost-filled">' + '$'.repeat(n) + '</span>' +
+    '<span class="mq-cost-empty">'  + '$'.repeat(4 - n) + '</span>' +
+  '</span>';
+}
+
+function renderMaterials() {
+  var container = document.getElementById('mq-mat-grid');
+  container.innerHTML = ''; document.getElementById('mq-mat-err').innerHTML = '';
+  var groups = [], groupMap = {};
+  MATERIALS[S.process].forEach(function(mat) {
+    var g = mat.group || 'Other';
+    if (!groupMap[g]) { groupMap[g] = []; groups.push(g); }
+    groupMap[g].push(mat);
+  });
+  groups.forEach(function(groupName) {
+    var label = document.createElement('p');
+    label.className = 'mq-mat-group-label';
+    label.textContent = groupName;
+    container.appendChild(label);
+    var grid = document.createElement('div');
+    grid.className = 'mq-grid-4';
+    groupMap[groupName].forEach(function(mat) {
+      var btn = document.createElement('button'); btn.className = 'mq-opt';
+      btn.innerHTML =
+        '<span class="mq-mat-top">' +
+          '<span class="mq-mat-name">' + mat.label + '</span>' +
+          costBadge(mat.cost) +
+        '</span>' +
+        (mat.desc ? '<small>' + mat.desc + '</small>' : '');
+      btn.onclick = function(){S.material=mat.key; S.materialLabel=mat.label; buildQuote();};
+      grid.appendChild(btn);
+    });
+    container.appendChild(grid);
+  });
+}
+
+document.getElementById('mq-back-quote').addEventListener('click', function(){show('material');});
+
+function discountPct(qty) {
+  var t = QTY_BREAKS.find(function(t){return qty>=t.min&&(t.max===null||qty<=t.max);});
+  return t ? t.pct : 0;
+}
+
+function calcLine(file) {
+  var cfg=MOCK_RATES[S.process], rate=cfg.mats[S.material]||0.20, hrs=file.volume/cfg.cm3PerHr;
+  var base=+(file.volume*rate+hrs*cfg.machineRatePerHr).toFixed(2), pct=discountPct(file.qty);
+  var unit=+(base*(1-pct/100)).toFixed(2);
+  return {base,unit,pct,lineTotal:+(unit*file.qty).toFixed(2),leadDays:Math.max(3,Math.ceil((file.qty*hrs)/16)+2)};
+}
+
+function buildQuote() {
+  setLoad('Calculating your quote…'); document.getElementById('mq-mat-err').innerHTML='';
+  var eligible = S.files.filter(function(f){return f[S.process==='FDM'?'fdmFits':'slaFits'];});
+  if (!eligible.length) { show('material'); document.getElementById('mq-mat-err').innerHTML='<div class="mq-err">No uploaded files fit the selected process.</div>'; return; }
+  if (MOCK_MODE) { setTimeout(function(){S.quote={eligible};renderQuote();show('quote');},500); }
+  else { S.quote={eligible}; renderQuote(); show('quote'); }
+}
+
+function renderQuote() {
+  var eligible = S.quote.eligible;
+  var items = eligible.map(function(f){return Object.assign({file:f},calcLine(f));});
+  S.quoteItems = items; S.shipping = null;
+  function grandTotal(){return +items.reduce(function(s,it){return s+it.lineTotal;},0).toFixed(2);}
+  function maxLead(){return Math.max.apply(null,items.map(function(it){return it.leadDays;}));}
+  function filesSummary(){return items.map(function(it){return it.file.fileName+' | '+it.file.volume+' cm³ | qty '+it.file.qty+' | $'+it.lineTotal.toFixed(2);}).join('\n');}
+
+  document.getElementById('mq-quote-body').innerHTML =
+    '<div class="mq-quote-meta"><strong>'+S.process+' · '+S.materialLabel+'</strong><span id="mq-lead">Est. '+maxLead()+' business days</span></div>'+
+    '<div class="mq-fl-header"><span>File</span><span>Unit price</span><span>Qty</span><span>Total</span></div>'+
+    '<div id="mq-lines">'+items.map(function(it,i){return(
+      '<div class="mq-fl" data-idx="'+i+'">'+
+        '<div><div class="mq-fl-name">'+it.file.fileName+'</div><div class="mq-fl-sub">'+it.file.volume+' cm³</div></div>'+
+        '<div class="mq-fl-vol">$'+it.unit.toFixed(2)+' / ea</div>'+
+        '<div class="mq-fl-qty"><div class="mq-stepper"><button class="mq-dec">−</button>'+
+        '<input type="number" min="1" value="'+it.file.qty+'" class="mq-qty-inp">'+
+        '<button class="mq-inc">+</button></div>'+(it.pct>0?'<span class="mq-badge">−'+it.pct+'%</span>':'')+'</div>'+
+        '<div class="mq-fl-price mq-line-total">$'+it.lineTotal.toFixed(2)+'</div>'+
+      '</div>');}).join('')+'</div>'+
+    (function(){
+      var totalQty=items.reduce(function(s,it){return s+it.file.qty;},0);
+      return '<div class="mq-discount-bar" id="mq-discount-bar">'+
+        '<span class="mq-discount-bar-label">Volume discounts</span>'+
+        QTY_BREAKS.filter(function(t){return t.pct>0;}).map(function(t){
+          var label=(t.max?t.min+'–'+t.max:t.min+'+')+' units · '+t.pct+'% off';
+          var active=totalQty>=t.min&&(t.max===null||totalQty<=t.max);
+          return '<span class="mq-discount-tier'+(active?' active':'')+'" data-min="'+t.min+'" data-max="'+(t.max||'')+'">'+label+'</span>';
+        }).join('')+
+      '</div>';
+    })()+
+    '<div class="mq-grand-row"><span>Parts Total</span><span id="mq-grand">$'+grandTotal().toFixed(2)+'</span></div>'+
+    '<div class="mq-shipping-section">'+
+      '<p class="mq-contact-heading">Shipping address</p>'+
+      '<input class="mq-inp" id="mq-addr-street" type="text" placeholder="Street address" autocomplete="street-address">'+
+      '<div class="mq-addr-row">'+
+        '<input class="mq-inp" id="mq-addr-zip"   type="text" placeholder="ZIP code"  maxlength="10" autocomplete="postal-code">'+
+        '<input class="mq-inp" id="mq-addr-city"  type="text" placeholder="City"                     autocomplete="address-level2">'+
+        '<input class="mq-inp" id="mq-addr-state" type="text" placeholder="State"     maxlength="2"  autocomplete="address-level1">'+
+      '</div>'+
+      '<div id="mq-ship-opts" style="display:none"></div>'+
+    '</div>'+
+    '<div id="mq-order-total-row" style="display:none"><div class="mq-order-total"><span>Order Total (parts + shipping)</span><strong id="mq-order-total-val">$0.00</strong></div></div>'+
+    '<div class="mq-success" id="mq-success" style="display:none"><div class="mq-success-icon">✅</div><h3>Quote request received!</h3><p>We\'ll review your files and follow up within one business day.</p></div>'+
+    '<div id="mq-submit-err"></div>'+
+    '<div id="mq-contact-form">'+
+      '<p class="mq-contact-heading">Where should we send your quote?</p>'+
+      '<input class="mq-inp" id="mq-c-name"    type="text"  placeholder="Full name *"        autocomplete="name">'+
+      '<input class="mq-inp" id="mq-c-company" type="text"  placeholder="Company (optional)" autocomplete="organization">'+
+      '<input class="mq-inp" id="mq-c-email"   type="email" placeholder="Email address *"    autocomplete="email">'+
+      '<p class="mq-contact-heading" style="margin-top:8px">Add a note</p>'+
+      '<textarea class="mq-inp mq-note" id="mq-c-note" placeholder="Are there any details we should know about?"></textarea>'+
+      '<button class="mq-cta" id="mq-req-btn">Submit Quote Request →</button>'+
+      '<p class="mq-footnote">Estimate only — final price confirmed after review.</p>'+
+    '</div>';
+
+  document.getElementById('mq-lines').addEventListener('click', function(e) {
+    var row=e.target.closest('.mq-fl'); if (!row) return;
+    var idx=+row.dataset.idx, inp=row.querySelector('.mq-qty-inp');
+    if (e.target.classList.contains('mq-dec')) applyQuoteQty(idx,+inp.value-1,items);
+    if (e.target.classList.contains('mq-inc')) applyQuoteQty(idx,+inp.value+1,items);
+  });
+  document.getElementById('mq-lines').addEventListener('change', function(e) {
+    if (e.target.classList.contains('mq-qty-inp')) { var row=e.target.closest('.mq-fl'); if (row) applyQuoteQty(+row.dataset.idx,+e.target.value,items); }
+  });
+
+  document.getElementById('mq-addr-zip').addEventListener('input', function() {
+    var zip=this.value.replace(/\D/g,''); S.address.zip=zip;
+    if (zip.length>=5) { renderShipOpts(eligible,zip); }
+    else { document.getElementById('mq-ship-opts').style.display='none'; S.shipping=null; updateOrderTotal(); }
+  });
+  ['mq-addr-street','mq-addr-city','mq-addr-state'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', function(){S.address[id.replace('mq-addr-','')]=this.value.trim();});
+  });
+
+  document.getElementById('mq-req-btn').addEventListener('click', function() {
+    var nameEl=document.getElementById('mq-c-name'), emailEl=document.getElementById('mq-c-email');
+    var companyEl=document.getElementById('mq-c-company'), errEl=document.getElementById('mq-submit-err');
+    var name=nameEl.value.trim(), email=emailEl.value.trim(), company=companyEl.value.trim(), note=document.getElementById('mq-c-note').value.trim();
+    nameEl.classList.remove('error'); emailEl.classList.remove('error'); errEl.innerHTML='';
+    var valid=true;
+    if (!name){nameEl.classList.add('error');valid=false;}
+    if (!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){emailEl.classList.add('error');valid=false;}
+    if (!valid){errEl.innerHTML='<p class="mq-submit-err">Please fill in the required fields.</p>';return;}
+    var btn=document.getElementById('mq-req-btn'); btn.disabled=true; btn.textContent='Submitting…';
+    var fd=new FormData();
+    fd.append('name',name); fd.append('email',email);
+    if (company) fd.append('company',company);
+    fd.append('process',S.process); fd.append('material',S.materialLabel);
+    fd.append('quote',filesSummary()); fd.append('parts_total','$'+grandTotal().toFixed(2));
+    fd.append('lead_time','Est. '+maxLead()+' business days');
+    if (note) fd.append('note',note);
+    if (S.address.street) fd.append('ship_street',S.address.street);
+    if (S.address.city)   fd.append('ship_city',S.address.city);
+    if (S.address.state)  fd.append('ship_state',S.address.state);
+    if (S.address.zip)    fd.append('ship_zip',S.address.zip);
+    if (S.shipping) { fd.append('shipping_method',S.shipping.method); fd.append('shipping_cost','$'+S.shipping.cost.toFixed(2)); fd.append('order_total','$'+(grandTotal()+S.shipping.cost).toFixed(2)); }
+    eligible.forEach(function(f){if(f.originalFile)fd.append('attachment',f.originalFile,f.fileName);});
+    fetch(FORMSPREE_URL,{method:'POST',headers:{'Accept':'application/json'},body:fd})
+      .then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data};});})
+      .then(function(r){
+        if(r.ok){document.getElementById('mq-contact-form').style.display='none';document.getElementById('mq-success').style.display='block';}
+        else{btn.disabled=false;btn.textContent='Submit Quote Request →';errEl.innerHTML='<p class="mq-submit-err">'+(r.data.error||'Submission failed — please try again.')+'</p>';}
+      }).catch(function(){btn.disabled=false;btn.textContent='Submit Quote Request →';errEl.innerHTML='<p class="mq-submit-err">Network error — please try again.</p>';});
+  });
+
+  function applyQuoteQty(idx,val,items) {
+    val=Math.max(1,parseInt(val)||1); items[idx].file.qty=val;
+    var row=document.querySelector('#mq-lines .mq-fl[data-idx="'+idx+'"]');
+    row.querySelector('.mq-qty-inp').value=val;
+    var it=items[idx], pct=discountPct(val), unit=+(it.base*(1-pct/100)).toFixed(2);
+    it.lineTotal=+(unit*val).toFixed(2); it.pct=pct;
+    it.leadDays=Math.max(3,Math.ceil((val*(it.file.volume/MOCK_RATES[S.process].cm3PerHr))/16)+2);
+    row.querySelector('.mq-line-total').textContent='$'+it.lineTotal.toFixed(2);
+    var badge=row.querySelector('.mq-badge');
+    if(pct>0){if(!badge){badge=document.createElement('span');badge.className='mq-badge';row.querySelector('.mq-fl-qty').appendChild(badge);}badge.textContent='−'+pct+'%';}
+    else if(badge) badge.remove();
+    document.getElementById('mq-grand').textContent='$'+grandTotal().toFixed(2);
+    document.getElementById('mq-lead').textContent='Est. '+maxLead()+' business days';
+    renderDiscountBar(items);
+    updateOrderTotal();
+  }
+}
+
+function renderDiscountBar(items) {
+  var bar=document.getElementById('mq-discount-bar');
+  if(!bar||!items) return;
+  var totalQty=items.reduce(function(s,it){return s+it.file.qty;},0);
+  bar.querySelectorAll('.mq-discount-tier').forEach(function(el){
+    var min=+el.dataset.min, max=el.dataset.max?+el.dataset.max:Infinity;
+    el.classList.toggle('active',totalQty>=min&&totalQty<=max);
+  });
+}
+
+function wLbs(eligible) {
+  var cfg=DENSITIES[S.process], den=cfg.mats[S.material]||1.1;
+  return eligible.reduce(function(s,f){return s+f.volume*cfg.fillFactor*den*f.qty;},0)/453.592;
+}
+function boxIn(eligible) {
+  var x=0,y=0,z=0;
+  eligible.forEach(function(f){x=Math.max(x,f.bbox.x);y=Math.max(y,f.bbox.y);z=Math.max(z,f.bbox.z);});
+  var B=50.8;
+  return{l:(x+B)/25.4,w:(y+B)/25.4,h:(z+B)/25.4};
+}
+function getZone(zip) {
+  return ZIP2_ZONE[zip.substring(0,2)] || 5;
+}
+function shipCost(method,eligible,zip) {
+  var w=wLbs(eligible),b=boxIn(eligible),dim=(b.l*b.w*b.h)/139,bill=Math.max(w,dim,1.0);
+  var zone=getZone(zip),r=SHIP_RATES[method].zones[zone];
+  return+(r.base+r.perLb*bill).toFixed(2);
+}
+function updateOrderTotal() {
+  var row=document.getElementById('mq-order-total-row'),val=document.getElementById('mq-order-total-val');
+  if(!row||!val||!S.quoteItems) return;
+  if(S.shipping){
+    var parts=+S.quoteItems.reduce(function(s,it){return s+it.lineTotal;},0).toFixed(2);
+    val.textContent='$'+(parts+S.shipping.cost).toFixed(2); row.style.display='';
+  } else { row.style.display='none'; }
+}
+function renderShipOpts(eligible,zip) {
+  var optsEl=document.getElementById('mq-ship-opts'); if(!optsEl) return;
+  optsEl.style.display='';
+  var w=wLbs(eligible),b=boxIn(eligible);
+  optsEl.innerHTML=
+    '<div class="mq-ship-opts">'+
+      ['Ground','Express','Overnight'].map(function(m){
+        var cost=shipCost(m,eligible,zip),r=SHIP_RATES[m],sel=S.shipping&&S.shipping.method===m;
+        return '<div class="mq-ship-opt'+(sel?' selected':'')+'" data-method="'+m+'" data-cost="'+cost+'">'+
+          '<div class="mq-ship-opt-name">'+m+'</div>'+
+          '<div class="mq-ship-opt-days">'+r.days+' business day'+(r.days==='1'?'':'s')+'</div>'+
+          '<div class="mq-ship-opt-price">$'+cost.toFixed(2)+'</div>'+
+        '</div>';}).join('')+
+    '</div>'+
+    '<p class="mq-ship-note">Shipping from Brea, CA · Zone '+getZone(zip)+' → ZIP '+zip+' · ~'+w.toFixed(2)+' lbs · '+b.l.toFixed(1)+'″ × '+b.w.toFixed(1)+'″ × '+b.h.toFixed(1)+'″ box</p>';
+  optsEl.querySelectorAll('.mq-ship-opt').forEach(function(card){
+    card.addEventListener('click',function(){
+      optsEl.querySelectorAll('.mq-ship-opt').forEach(function(c){c.classList.remove('selected');});
+      card.classList.add('selected');
+      S.shipping={method:card.dataset.method,cost:+card.dataset.cost};
+      updateOrderTotal();
+    });
+  });
+}
+</script>
+</body>
+</html>

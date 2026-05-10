@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shipping Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Khula:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+  body{margin:0;padding:40px 20px;background:#06000f;font-family:'Khula',sans-serif}
+  .preview-label{text-align:center;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#54f2e5;opacity:.5;margin-bottom:24px}
+  #mq *{box-sizing:border-box;font-family:'Khula',sans-serif}
+  #mq{max-width:780px;margin:0 auto;background:#0c0118;border:1px solid #560591;border-radius:18px;box-shadow:0 0 50px rgba(86,5,145,.45)}
+  .mq-brand-header{display:flex;align-items:center;justify-content:space-between;padding:34px 48px 32px;border-bottom:1px solid rgba(86,5,145,.5)}
+  .mq-brand-logo img{height:42px;width:auto;display:block}
+  .mq-brand-tag{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#54f2e5;background:rgba(84,242,229,.1);border:1px solid rgba(84,242,229,.3);border-radius:4px;padding:8px 16px}
+  .mq-steps{display:flex;background:#100020;border-bottom:1px solid rgba(86,5,145,.5);overflow:hidden}
+  .mq-step{flex:1;padding:26px 12px;text-align:center;font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#666;border-bottom:3px solid transparent}
+  .mq-step.active{color:#54f2e5;border-bottom-color:#54f2e5}
+  .mq-step.done{color:#9040d0;border-bottom-color:#9040d0}
+  .mq-body{padding:36px 48px 48px}
+  .mq-back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:#a8a8a8;font-size:14px;cursor:pointer;padding:4px 0;margin-bottom:20px;font-family:'Khula',sans-serif}
+  .mq-heading{font-size:20px;font-weight:800;color:#fff;margin-bottom:22px}
+  .mq-quote-meta{display:flex;justify-content:space-between;align-items:center;background:rgba(86,5,145,.15);border:1px solid rgba(86,5,145,.4);border-radius:11px;padding:16px 20px;margin-bottom:18px;font-size:14px;color:#ccc}
+  .mq-quote-meta strong{color:#54f2e5;font-size:15px}
+  .mq-fl-header{display:grid;grid-template-columns:1fr 110px 140px 72px;gap:12px;padding:8px 0 10px;border-bottom:1px solid rgba(86,5,145,.35);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#888}
+  .mq-fl-header>*:not(:first-child){text-align:right}
+  .mq-fl{display:grid;grid-template-columns:1fr 110px 140px 72px;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(86,5,145,.2)}
+  .mq-fl-name{font-size:14px;font-weight:700;color:#fff}
+  .mq-fl-sub{font-size:13px;color:#a8a8a8;margin-top:3px}
+  .mq-fl-vol{font-size:14px;color:#ccc;text-align:right}
+  .mq-fl-qty{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+  .mq-fl-price{font-size:15px;font-weight:800;color:#54f2e5;text-align:right}
+  .mq-stepper{display:inline-flex;align-items:center;border:1px solid rgba(86,5,145,.5);border-radius:8px;overflow:hidden}
+  .mq-stepper button{width:36px;height:36px;background:rgba(86,5,145,.2);border:none;font-size:18px;color:#ccc;font-family:'Khula',sans-serif;line-height:1}
+  .mq-stepper input{width:46px;height:36px;border:none;border-left:1px solid rgba(86,5,145,.4);border-right:1px solid rgba(86,5,145,.4);text-align:center;font-size:15px;font-weight:700;color:#fff;background:#0c0118;outline:none;font-family:'Khula',sans-serif;-moz-appearance:textfield}
+  .mq-stepper input::-webkit-inner-spin-button,.mq-stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .mq-grand-row{display:flex;justify-content:space-between;align-items:baseline;padding-top:18px;margin-top:12px;border-top:1px solid rgba(84,242,229,.3);font-weight:800;font-size:22px;color:#fff;margin-bottom:24px}
+  .mq-grand-row span:last-child{color:#54f2e5}
+  .mq-shipping-section{margin-top:28px;padding-top:24px;border-top:1px solid rgba(86,5,145,.25)}
+  .mq-contact-heading{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#ccc;margin-bottom:12px;padding-top:6px}
+  #mq .mq-inp{display:block;width:100%;padding:13px 16px;margin-bottom:12px;border:1px solid rgba(86,5,145,.45);border-radius:10px;font-size:15px;color:#fff;font-family:'Khula',sans-serif;background:rgba(86,5,145,.08);outline:none}
+  #mq .mq-inp::placeholder{color:#888}
+  .mq-addr-row{display:grid;grid-template-columns:130px 1fr 90px;gap:10px}
+  .mq-ship-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 8px}
+  .mq-ship-opt{border:1px solid rgba(86,5,145,.35);border-radius:11px;padding:14px 16px;cursor:pointer;background:rgba(86,5,145,.08);text-align:center}
+  .mq-ship-opt.selected{border-color:#54f2e5;background:rgba(84,242,229,.09);box-shadow:0 0 14px rgba(84,242,229,.1)}
+  .mq-ship-opt-name{font-size:14px;font-weight:800;color:#fff;margin-bottom:4px}
+  .mq-ship-opt-days{font-size:12px;color:#888;margin-bottom:8px}
+  .mq-ship-opt-price{font-size:20px;font-weight:800;color:#54f2e5}
+  .mq-ship-note{font-size:12px;color:#666;margin-top:6px;line-height:1.5}
+  .mq-order-breakdown{background:rgba(84,242,229,.06);border:1px solid rgba(84,242,229,.25);border-radius:11px;padding:16px 20px;margin:16px 0 4px}
+  .mq-order-breakdown-line{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#ccc;padding:5px 0;border-top:1px solid rgba(86,5,145,.2)}
+  .mq-order-breakdown-line:first-child{border-top:none}
+  .mq-order-breakdown-total{display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:700;color:#fff;padding-top:12px;margin-top:8px;border-top:1px solid rgba(84,242,229,.35)}
+  .mq-order-breakdown-total strong{color:#54f2e5;font-size:20px;font-weight:800}
+  </style>
+</head>
+<body>
+  <p class="preview-label">Shipping Demo — Brea, CA 92821 Origin</p>
+  <div id="mq">
+    <div class="mq-brand-header">
+      <div class="mq-brand-logo"><img src="https://cdn.prod.website-files.com/68dc75f5161ad85e0cd30bd2/69fe4fbbd1c90020242cf636_logo.gif" alt="Mithril Plastics"></div>
+      <div class="mq-brand-tag">Instant Quote</div>
+    </div>
+    <div class="mq-steps">
+      <div class="mq-step done">1 · Upload</div>
+      <div class="mq-step done">2 · Process</div>
+      <div class="mq-step done">3 · Material</div>
+      <div class="mq-step active">4 · Quote</div>
+    </div>
+    <div class="mq-body">
+      <button class="mq-back">← Back</button>
+      <p class="mq-heading">Your instant quote</p>
+
+      <div class="mq-quote-meta">
+        <strong>FDM · PETG</strong>
+        <span>Est. 3 business days</span>
+      </div>
+
+      <div class="mq-fl-header">
+        <span>File</span><span>Unit price</span><span>Qty</span><span>Total</span>
+      </div>
+      <div class="mq-fl">
+        <div><div class="mq-fl-name">bracket_v3.stl</div><div class="mq-fl-sub">12.4823 cm³</div></div>
+        <div class="mq-fl-vol">$6.02 / ea</div>
+        <div class="mq-fl-qty"><div class="mq-stepper"><button>−</button><input type="number" value="2"><button>+</button></div></div>
+        <div class="mq-fl-price">$12.04</div>
+      </div>
+      <div class="mq-fl">
+        <div><div class="mq-fl-name">housing_top.stl</div><div class="mq-fl-sub">38.7612 cm³</div></div>
+        <div class="mq-fl-vol">$18.70 / ea</div>
+        <div class="mq-fl-qty"><div class="mq-stepper"><button>−</button><input type="number" value="1"><button>+</button></div></div>
+        <div class="mq-fl-price">$18.70</div>
+      </div>
+
+      <div class="mq-grand-row"><span>Parts Total</span><span>$30.74</span></div>
+
+      <!-- Shipping section — three ZIP examples side by side -->
+      <div class="mq-shipping-section">
+        <p class="mq-contact-heading">Shipping address</p>
+        <input class="mq-inp" type="text" placeholder="Street address">
+        <div class="mq-addr-row">
+          <input class="mq-inp" type="text" value="90210" placeholder="ZIP code">
+          <input class="mq-inp" type="text" value="Beverly Hills" placeholder="City">
+          <input class="mq-inp" type="text" value="CA" placeholder="State">
+        </div>
+
+        <!-- Zone 2 — Beverly Hills, CA (local) -->
+        <p style="font-size:11px;color:#555;margin:4px 0 10px;letter-spacing:.05em">Example A — Beverly Hills, CA 90210 (Zone 2 · local)</p>
+        <div class="mq-ship-opts">
+          <div class="mq-ship-opt selected">
+            <div class="mq-ship-opt-name">Ground</div>
+            <div class="mq-ship-opt-days">5–7 business days</div>
+            <div class="mq-ship-opt-price">$9.80</div>
+          </div>
+          <div class="mq-ship-opt">
+            <div class="mq-ship-opt-name">Express</div>
+            <div class="mq-ship-opt-days">2–3 business days</div>
+            <div class="mq-ship-opt-price">$24.75</div>
+          </div>
+          <div class="mq-ship-opt">
+            <div class="mq-ship-opt-name">Overnight</div>
+            <div class="mq-ship-opt-days">1 business day</div>
+            <div class="mq-ship-opt-price">$49.50</div>
+          </div>
+        </div>
+        <p class="mq-ship-note">Shipping from Brea, CA · Zone 2 → ZIP 90210 · ~0.04 lbs · 6.7″ × 5.8″ × 3.2″ box</p>
+
+        <!-- Zone 5 — Denver, CO -->
+        <p style="font-size:11px;color:#555;margin:20px 0 10px;letter-spacing:.05em">Example B — Denver, CO 80202 (Zone 6 · ~1,020 mi)</p>
+        <div class="mq-ship-opts">
+          <div class="mq-ship-opt">
+            <div class="mq-ship-opt-name">Ground</div>
+            <div class="mq-ship-opt-days">5–7 business days</div>
+            <div class="mq-ship-opt-price">$16.00</div>
+          </div>
+          <div class="mq-ship-opt">
+            <div class="mq-ship-opt-name">Express</div>
+            <div class="mq-ship-opt-days">2–3 business days</div>
+            <div class="mq-ship-opt-price">$40.95</div>
+          </div>
+          <div class="mq-ship-opt">
+            <div class="mq-ship-opt-name">Overnight</div>
+            <div class="mq-ship-opt-days">1 business day</div>
+            <div class="mq-ship-opt-price">$79.90</div>
+          </div>
+        </div>
+        <p class="mq-ship-note">Shipping from Brea, CA · Zone 6 → ZIP 80202 · ~0.04 lbs · 6.7″ × 5.8″ × 3.2″ box</p>
+
+        <!-- Zone 8 — New York, NY -->
+        <p style="font-size:11px;color:#555;margin:20px 0 10px;letter-spacing:.05em">Example C — New York, NY 10001 (Zone 8 · ~2,800 mi)</p>
+        <div class="mq-ship-opts">
+          <div class="mq-ship-opt">
+            <div class="mq-ship-opt-name">Ground</div>
+            <div class="mq-ship-opt-days">5–7 business days</div>
+            <div class="mq-ship-opt-price">$19.10</div>
+          </div>
+          <div class="mq-ship-opt">
+            <div class="mq-ship-opt-name">Express</div>
+            <div class="mq-ship-opt-days">2–3 business days</div>
+            <div class="mq-ship-opt-price">$51.70</div>
+          </div>
+          <div class="mq-ship-opt">
+            <div class="mq-ship-opt-name">Overnight</div>
+            <div class="mq-ship-opt-days">1 business day</div>
+            <div class="mq-ship-opt-price">$103.40</div>
+          </div>
+        </div>
+        <p class="mq-ship-note">Shipping from Brea, CA · Zone 8 → ZIP 10001 · ~0.04 lbs · 6.7″ × 5.8″ × 3.2″ box</p>
+
+        <div class="mq-order-breakdown" style="margin-top:20px">
+          <div class="mq-order-breakdown-line"><span>Parts Subtotal</span><span>$30.74</span></div>
+          <div class="mq-order-breakdown-line"><span>Shipping (Ground)</span><span>$9.80</span></div>
+          <div class="mq-order-breakdown-line"><span>CA Sales Tax (7.75%)</span><span>$2.38</span></div>
+          <div class="mq-order-breakdown-total"><span>Order Total</span><strong>$42.92</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

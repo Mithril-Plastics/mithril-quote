@@ -1,0 +1,43 @@
+{
+  "build_volumes": {
+    "FDM": { "x": 254, "y": 254, "z": 254 },
+    "SLA": { "x": 298, "y": 164, "z": 300 }
+  },
+  "machine_rates": {
+    "FDM": { "rate_per_hr": 2.50, "cm3_per_hr": 8 },
+    "SLA": { "rate_per_hr": 5.00, "cm3_per_hr": 18 }
+  },
+  "quantity_breaks": [
+    { "min": 1,  "max": 5,    "discount": 0.00 },
+    { "min": 6,  "max": 20,   "discount": 0.08 },
+    { "min": 21, "max": 50,   "discount": 0.15 },
+    { "min": 51, "max": null, "discount": 0.22 }
+  ],
+  "materials": {
+    "FDM": {
+      "PLA":      { "rate": 0.15, "label": "PLA" },
+      "ABS":      { "rate": 0.18, "label": "ABS" },
+      "PETG":     { "rate": 0.17, "label": "PETG" },
+      "TPU":      { "rate": 0.25, "label": "TPU" },
+      "Nylon":    { "rate": 0.28, "label": "Nylon (PA12)" },
+      "ASA":      { "rate": 0.20, "label": "ASA" },
+      "PET":      { "rate": 0.16, "label": "PET" },
+      "PC":       { "rate": 0.32, "label": "Polycarbonate (PC)" },
+      "PLA-CF":   { "rate": 0.36, "label": "PLA Carbon Fiber" },
+      "ABS-CF":   { "rate": 0.42, "label": "ABS Carbon Fiber" },
+      "PETG-CF":  { "rate": 0.38, "label": "PETG Carbon Fiber" },
+      "TPU-CF":   { "rate": 0.46, "label": "TPU Carbon Fiber" },
+      "Nylon-CF": { "rate": 0.58, "label": "Nylon Carbon Fiber" },
+      "ASA-CF":   { "rate": 0.44, "label": "ASA Carbon Fiber" },
+      "Nylon-GF": { "rate": 0.50, "label": "Nylon Glass Fiber" },
+      "PC-GF":    { "rate": 0.54, "label": "PC Glass Fiber" }
+    },
+    "SLA": {
+      "Standard":  { "rate": 0.30, "label": "Standard Resin" },
+      "Clear":     { "rate": 0.36, "label": "Clear Resin" },
+      "High Temp": { "rate": 0.65, "label": "High Temp Resin" },
+      "ABS-Like":  { "rate": 0.33, "label": "ABS-Like Resin" },
+      "Flexible":  { "rate": 0.48, "label": "Flexible Resin" }
+    }
+  }
+}

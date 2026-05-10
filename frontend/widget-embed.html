@@ -1,0 +1,141 @@
+<!-- ============================================================
+     PART 2 OF 2 — Paste into the Webflow Embed element
+     (double-click the Code Embed block in the Designer,
+      clear existing content, paste this entire file)
+     ============================================================ -->
+
+<div id="mq">
+  <div class="mq-brand-header">
+    <div class="mq-brand-logo"><img src="https://cdn.prod.website-files.com/68dc75f5161ad85e0cd30bd2/69fe4fbbd1c90020242cf636_logo.gif" alt="Mithril Plastics"></div>
+    <div class="mq-brand-tag">Instant Quote</div>
+  </div>
+  <div class="mq-steps">
+    <div class="mq-step active" id="mq-s1">1 · Upload</div>
+    <div class="mq-step"        id="mq-s2">2 · Process</div>
+    <div class="mq-step"        id="mq-s3">3 · Material</div>
+    <div class="mq-step"        id="mq-s4">4 · Quote</div>
+  </div>
+
+  <div class="mq-body">
+
+    <!-- ── UPLOAD SCREEN ─────────────────────────────────────── -->
+    <div class="mq-screen on" id="mq-upload">
+
+      <!-- Hidden file input (shared) -->
+      <input type="file" id="mq-input" accept=".stl,.obj,.ply,.glb,.gltf" multiple style="display:none">
+
+      <!-- EMPTY STATE -->
+      <div id="mq-empty-state">
+        <p class="mq-heading">Upload your 3D files</p>
+        <div class="mq-drop" id="mq-zone">
+          <span class="mq-drop-icon">📂</span>
+          <p class="mq-drop-headline">Drag &amp; drop your files here</p>
+          <p class="mq-drop-sub">or</p>
+          <span class="mq-drop-cta" id="mq-browse">Browse files</span>
+          <p class="mq-formats">STL · OBJ · PLY · GLB · GLTF</p>
+        </div>
+        <div id="mq-upload-err"></div>
+      </div>
+
+      <!-- FILES STATE -->
+      <div id="mq-files-state" style="display:none">
+
+        <!-- Header -->
+        <div class="mq-upload-header">
+          <div class="mq-upload-count" id="mq-model-count">0 models uploaded</div>
+          <div class="mq-upload-status">Ready to go!</div>
+          <div class="mq-upload-hint">Files are analysed locally — nothing leaves your device until you submit.</div>
+        </div>
+
+        <!-- Upload more zone -->
+        <div class="mq-drop-more" id="mq-drop-more">
+          <span>⬆</span><span>Upload more files or drag and drop here</span>
+        </div>
+
+        <!-- Selected count row -->
+        <div class="mq-sel-row">
+          <span class="mq-selected-count" id="mq-sel-count">0 models selected</span>
+        </div>
+
+        <!-- Combined controls bar: file unit + qty (left) | select all + delete (right) -->
+        <div class="mq-controls-bar">
+          <div class="mq-controls-left">
+            <span class="mq-unit-label">File unit: <strong>Millimeters (mm)</strong></span>
+            <div class="mq-global-qty">
+              <span class="mq-global-qty-label">Quantity:</span>
+              <div class="mq-stepper">
+                <button id="mq-g-dec">−</button>
+                <input type="number" id="mq-g-qty" value="1" min="1">
+                <button id="mq-g-inc">+</button>
+              </div>
+            </div>
+          </div>
+          <div class="mq-controls-right">
+            <button class="mq-toolbar-btn" id="mq-select-all">Select all files</button>
+            <button class="mq-toolbar-btn danger" id="mq-delete-sel">🗑 Delete</button>
+          </div>
+        </div>
+
+        <!-- Card grid -->
+        <div class="mq-cards-grid" id="mq-cards-grid"></div>
+
+        <div id="mq-upload-err2"></div>
+
+        <!-- CTA — centred, auto width -->
+        <div class="mq-cta-wrap">
+          <button class="mq-cta" id="mq-continue">See Materials &amp; Prices →</button>
+        </div>
+
+      </div>
+    </div><!-- /mq-upload -->
+
+    <!-- ── PROCESS SCREEN ─────────────────────────────────────── -->
+    <div class="mq-screen" id="mq-process">
+      <button class="mq-back" id="mq-back-proc">&#8592; Back</button>
+      <p class="mq-heading">Select manufacturing process</p>
+      <div class="mq-grid-2">
+        <button class="mq-opt" id="mq-fdm" data-p="FDM">FDM<small>Fused Deposition Modeling — filament-based printing. Fast, affordable, wide material selection.</small></button>
+        <button class="mq-opt" id="mq-sla" data-p="SLA">SLA<small>Stereolithography — resin-based printing. Ultra-fine detail and smooth surface finish.</small></button>
+      </div>
+      <div id="mq-proc-warn"></div>
+    </div>
+
+    <!-- ── MATERIAL SCREEN ────────────────────────────────────── -->
+    <div class="mq-screen" id="mq-material">
+      <button class="mq-back" id="mq-back-mat">&#8592; Back</button>
+      <p class="mq-heading">Select material</p>
+      <div id="mq-mat-grid"></div>
+      <div id="mq-mat-err"></div>
+    </div>
+
+    <!-- ── QUOTE SCREEN ───────────────────────────────────────── -->
+    <div class="mq-screen" id="mq-quote">
+      <button class="mq-back" id="mq-back-quote">&#8592; Back</button>
+      <p class="mq-heading">Your instant quote</p>
+      <div id="mq-quote-body"></div>
+    </div>
+
+    <!-- ── LOADING SCREEN ─────────────────────────────────────── -->
+    <div class="mq-screen" id="mq-loading">
+      <div class="mq-loader">
+        <div class="mq-spinner"></div>
+        <p id="mq-load-txt">Analysing files…</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Widget config — update these two values before going live ── -->
+<script>
+window.MQ = {
+  API_BASE:      'https://YOUR-BACKEND.railway.app', // only needed when MOCK_MODE is false
+  MOCK_MODE:     true,                               // set to false when backend is live
+  FORMSPREE_URL: 'https://formspree.io/f/mojrlbvn',
+};
+</script>
+
+<!-- ── Widget logic ──
+     Replace YOUR-USERNAME/YOUR-REPO with your GitHub repo.
+     jsDelivr serves it for free with no backend needed. ── -->
+<script defer src="https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@main/frontend/widget.js"></script>

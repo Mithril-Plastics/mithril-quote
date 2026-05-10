@@ -1,0 +1,905 @@
+<!-- ============================================================
+     Mithril Plastics — STL Quote Widget  (3D viewer edition)
+     Paste this entire block into a Webflow Embed element.
+     After deploying the backend, set MOCK_MODE = false and
+     replace API_BASE with your Railway URL.
+     ============================================================ -->
+
+<!-- Khula font (Mithril brand) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Khula:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Three.js r128 global builds (NOT ES modules) -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+<style>
+  /* ── Mithril brand tokens ──────────────────────────────────────────────────
+     Purple: #560591   Cyan: #54f2e5   Dark BG: #0c0118
+  ── */
+  #mq * { box-sizing: border-box; font-family: 'Khula', sans-serif; margin: 0; padding: 0; }
+
+  #mq {
+    max-width: 580px; margin: 0 auto;
+    background: #0c0118;
+    border: 1px solid #560591;
+    border-radius: 14px;
+    box-shadow: 0 0 40px rgba(86,5,145,0.45), 0 0 80px rgba(84,242,229,0.07);
+  }
+
+  /* ── Branded header ── */
+  .mq-brand-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 24px 32px 22px; border-bottom: 1px solid rgba(86,5,145,0.5);
+  }
+  .mq-brand-logo img {
+    height: 36px; width: auto; display: block;
+  }
+  .mq-brand-tag {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.18em;
+    text-transform: uppercase; color: #54f2e5; background: rgba(84,242,229,0.1);
+    border: 1px solid rgba(84,242,229,0.3); border-radius: 3px;
+    padding: 4px 10px;
+  }
+
+  /* ── Step bar ── */
+  .mq-steps { display: flex; background: #100020; border-bottom: 1px solid rgba(86,5,145,0.5); border-radius: 0; overflow: hidden; }
+  .mq-step {
+    flex: 1; padding: 22px 12px; text-align: center; font-size: 12px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: #989898;
+    border-bottom: 2px solid transparent; transition: color 0.2s, border-color 0.2s;
+  }
+  .mq-step.active { color: #54f2e5; border-bottom-color: #54f2e5; }
+  .mq-step.done   { color: #9040d0; border-bottom-color: #9040d0; }
+
+  .mq-body { padding: 26px 28px; }
+  .mq-heading { font-size: 18px; font-weight: 800; color: #ffffff; margin-bottom: 20px; letter-spacing: 0.02em; }
+
+  /* ── Drop zone ── */
+  .mq-drop {
+    border: 2px dashed rgba(86,5,145,0.6); border-radius: 10px;
+    padding: 26px 24px; text-align: center; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s; user-select: none;
+    background: rgba(86,5,145,0.05);
+  }
+  .mq-drop:hover, .mq-drop.over {
+    border-color: #54f2e5; background: rgba(84,242,229,0.06);
+  }
+  .mq-drop-icon { font-size: 32px; display: block; margin-bottom: 10px; }
+  .mq-drop p { font-size: 14px; color: #cccccc; line-height: 1.7; }
+  .mq-drop strong { color: #54f2e5; }
+  .mq-drop .mq-formats { font-size: 12px; color: #7868a8; margin-top: 4px; letter-spacing: 0.06em; }
+
+  /* ── 3D viewer ── */
+  .mq-3d-wrap {
+    margin-top: 16px; border: 1px solid rgba(86,5,145,0.5); border-radius: 10px;
+    overflow: hidden; position: relative; height: 340px; background: #06000f;
+    display: none;
+  }
+  .mq-3d-wrap.visible { display: block; }
+  #mq-canvas { display: block; width: 100%; height: 100%; }
+  .mq-3d-overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; pointer-events: none;
+  }
+  .mq-3d-empty-msg { font-size: 13px; color: #888888; }
+  .mq-3d-filename {
+    position: absolute; top: 10px; left: 12px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: #54f2e5; background: rgba(6,0,15,0.8); border: 1px solid rgba(84,242,229,0.3);
+    border-radius: 4px; padding: 3px 8px;
+    max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mq-3d-hint {
+    position: absolute; bottom: 8px; right: 10px; font-size: 11px;
+    color: #888888; pointer-events: none; letter-spacing: 0.04em;
+  }
+
+  /* ── File list ── */
+  .mq-file-list { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .mq-fi {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(86,5,145,0.08); border: 1px solid rgba(86,5,145,0.35); border-radius: 9px;
+    padding: 10px 12px; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .mq-fi:hover { border-color: rgba(84,242,229,0.4); background: rgba(84,242,229,0.05); }
+  .mq-fi.selected { border-color: #54f2e5; background: rgba(84,242,229,0.07); box-shadow: 0 0 12px rgba(84,242,229,0.12); }
+  .mq-fi-icon { font-size: 20px; flex-shrink: 0; }
+  .mq-fi-info { flex: 1; min-width: 0; }
+  .mq-fi-name { font-size: 14px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mq-fi-meta { font-size: 12px; color: #b8b8b8; margin-top: 2px; }
+  .mq-fi-tags { display: flex; gap: 5px; margin-top: 4px; }
+  .mq-fi-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.03em; padding: 2px 7px; border-radius: 99px; background: rgba(84,242,229,0.12); color: #54f2e5; border: 1px solid rgba(84,242,229,0.3); }
+  .mq-fi-tag.warn { background: rgba(234,56,76,0.12); color: #f05868; border-color: rgba(234,56,76,0.3); }
+  .mq-fi-del {
+    flex-shrink: 0; width: 26px; height: 26px; background: none;
+    border: 1px solid rgba(86,5,145,0.4); border-radius: 6px; cursor: pointer;
+    font-size: 13px; color: #989898; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .mq-fi-del:hover { background: rgba(234,56,76,0.15); border-color: #ea384c; color: #ea384c; }
+
+  .mq-continue {
+    display: none; width: 100%; margin-top: 16px; padding: 14px;
+    background: #560591; color: #ffffff; border: none; border-radius: 9px;
+    font-size: 15px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s; font-family: 'Khula', sans-serif;
+  }
+  .mq-continue:hover { background: #6b0ab5; box-shadow: 0 0 18px rgba(86,5,145,0.6); }
+  .mq-continue.visible { display: block; }
+
+  .mq-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mq-grid-4 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mq-opt {
+    padding: 14px 14px 12px; border: 1px solid rgba(86,5,145,0.45); border-radius: 9px;
+    background: rgba(86,5,145,0.08); cursor: pointer;
+    font-size: 14px; font-weight: 700; color: #f0f0f0;
+    text-align: left; line-height: 1.3; transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s;
+    font-family: 'Khula', sans-serif;
+  }
+  .mq-opt:hover:not(:disabled) { border-color: #54f2e5; color: #54f2e5; background: rgba(84,242,229,0.07); box-shadow: 0 0 12px rgba(84,242,229,0.1); }
+  .mq-opt:disabled { opacity: 0.25; cursor: not-allowed; }
+  .mq-opt small { display: block; font-size: 12px; font-weight: 400; color: #b8b8b8; margin-top: 5px; line-height: 1.45; }
+
+  .mq-back {
+    display: inline-flex; align-items: center; gap: 5px; background: none; border: none;
+    color: #a8a8a8; font-size: 13px; cursor: pointer; padding: 0; margin-bottom: 18px;
+    font-family: 'Khula', sans-serif; letter-spacing: 0.03em;
+  }
+  .mq-back:hover { color: #54f2e5; }
+
+  .mq-warn {
+    background: rgba(255,180,50,0.07); border: 1px solid rgba(255,180,50,0.3); color: #e0b870;
+    border-radius: 8px; padding: 11px 14px; font-size: 13px; margin-top: 14px; line-height: 1.5;
+  }
+  .mq-err {
+    background: rgba(234,56,76,0.08); border: 1px solid rgba(234,56,76,0.35); color: #ea384c;
+    border-radius: 8px; padding: 11px 14px; font-size: 13px; margin-top: 14px;
+  }
+
+  /* ── Quote ── */
+  .mq-quote-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(86,5,145,0.15); border: 1px solid rgba(86,5,145,0.4); border-radius: 9px;
+    padding: 12px 16px; margin-bottom: 14px; font-size: 13px; color: #cccccc;
+  }
+  .mq-quote-meta strong { color: #54f2e5; font-size: 14px; }
+  .mq-fl-header {
+    display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px;
+    padding: 6px 0 8px; border-bottom: 1px solid rgba(86,5,145,0.35);
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888888;
+  }
+  .mq-fl-header > *:not(:first-child) { text-align: right; }
+  .mq-fl {
+    display: grid; grid-template-columns: 1fr auto auto auto;
+    gap: 10px; align-items: center; padding: 11px 0; border-bottom: 1px solid rgba(86,5,145,0.2);
+  }
+  .mq-fl:last-child { border-bottom: none; }
+  .mq-fl-name { font-size: 13px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mq-fl-sub  { font-size: 12px; color: #a8a8a8; margin-top: 1px; }
+  .mq-fl-vol  { font-size: 13px; color: #cccccc; text-align: right; white-space: nowrap; }
+  .mq-fl-qty  { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .mq-fl-price { font-size: 14px; font-weight: 800; color: #54f2e5; text-align: right; white-space: nowrap; }
+  .mq-stepper { display: flex; align-items: center; border: 1px solid rgba(86,5,145,0.5); border-radius: 7px; overflow: hidden; }
+  .mq-stepper button {
+    width: 30px; height: 30px; background: rgba(86,5,145,0.2); border: none;
+    font-size: 16px; cursor: pointer; color: #e8e8e8; transition: background 0.15s;
+    font-family: 'Khula', sans-serif;
+  }
+  .mq-stepper button:hover { background: rgba(86,5,145,0.5); color: #54f2e5; }
+  .mq-stepper input {
+    width: 44px; height: 30px; border: none;
+    border-left: 1px solid rgba(86,5,145,0.4); border-right: 1px solid rgba(86,5,145,0.4);
+    text-align: center; font-size: 13px; font-weight: 700; color: #ffffff;
+    background: #0c0118; outline: none; font-family: 'Khula', sans-serif;
+  }
+  .mq-badge { background: rgba(84,242,229,0.12); color: #54f2e5; border: 1px solid rgba(84,242,229,0.35); border-radius: 99px; padding: 2px 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; }
+  .mq-grand-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-top: 14px; margin-top: 10px; border-top: 1px solid rgba(84,242,229,0.3);
+    font-weight: 800; font-size: 20px; color: #ffffff; margin-bottom: 20px;
+  }
+  .mq-grand-row span:last-child { color: #54f2e5; }
+  .mq-cta {
+    display: block; width: 100%; padding: 15px; background: #560591; color: #ffffff;
+    border: none; border-radius: 9px; font-size: 15px; font-weight: 800; letter-spacing: 0.04em;
+    cursor: pointer; transition: background 0.15s, box-shadow 0.15s; font-family: 'Khula', sans-serif;
+  }
+  .mq-cta:hover { background: #6b0ab5; box-shadow: 0 0 20px rgba(86,5,145,0.65); }
+  .mq-cta:disabled { opacity: 0.5; cursor: not-allowed; }
+  .mq-footnote { text-align: center; font-size: 12px; color: #888888; margin-top: 11px; }
+
+  /* ── Contact form ── */
+  .mq-contact-heading { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #cccccc; margin-bottom: 12px; padding-top: 4px; }
+  #mq .mq-inp {
+    display: block; width: 100%; padding: 10px 13px; margin-bottom: 10px;
+    border: 1px solid rgba(86,5,145,0.45); border-radius: 8px;
+    font-size: 14px; color: #ffffff; font-family: 'Khula', sans-serif;
+    background: rgba(86,5,145,0.08); outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  #mq .mq-inp:focus { border-color: #54f2e5; box-shadow: 0 0 0 3px rgba(84,242,229,0.12); }
+  #mq .mq-inp::placeholder { color: #888888; }
+  #mq .mq-inp.error { border-color: #ea384c; box-shadow: 0 0 0 3px rgba(234,56,76,0.12); }
+  .mq-submit-err { color: #ea384c; font-size: 13px; margin-bottom: 10px; }
+  .mq-field-err { display: block; font-size: 12px; color: #ea384c; margin-top: -6px; margin-bottom: 8px; min-height: 0; }
+  #mq .mq-note { resize: vertical; min-height: 88px; line-height: 1.5; }
+  .mq-success {
+    text-align: center; padding: 32px 20px;
+    background: rgba(84,242,229,0.06); border: 1px solid rgba(84,242,229,0.3); border-radius: 10px; margin-top: 8px;
+  }
+  .mq-success-icon { font-size: 36px; margin-bottom: 10px; }
+  .mq-success h3 { font-size: 16px; font-weight: 800; color: #54f2e5; margin-bottom: 6px; letter-spacing: 0.02em; }
+  .mq-success p { font-size: 14px; color: #cccccc; line-height: 1.5; }
+
+  .mq-loader { text-align: center; padding: 48px 20px; color: #a8a8a8; font-size: 14px; }
+  @keyframes mq-spin { to { transform: rotate(360deg); } }
+  .mq-spinner {
+    width: 32px; height: 32px; border: 2px solid rgba(86,5,145,0.3); border-top-color: #54f2e5;
+    border-radius: 50%; animation: mq-spin 0.75s linear infinite; margin: 0 auto 16px;
+  }
+
+  .mq-screen { display: none; }
+  .mq-screen.on { display: block; }
+
+  @media (max-width: 460px) {
+    .mq-body { padding: 20px 16px; }
+    .mq-grid-2, .mq-grid-4 { grid-template-columns: 1fr; }
+    .mq-fl-header, .mq-fl { grid-template-columns: 1fr auto auto; }
+    .mq-fl-vol { display: none; }
+    .mq-fl-header > :nth-child(2) { display: none; }
+  }
+</style>
+
+<div id="mq">
+  <div class="mq-brand-header">
+    <div class="mq-brand-logo"><img src="https://cdn.prod.website-files.com/68dc75f5161ad85e0cd30bd2/69fe4fbbd1c90020242cf636_logo.gif" alt="Mithril Plastics"></div>
+    <div class="mq-brand-tag">Instant Quote</div>
+  </div>
+  <div class="mq-steps">
+    <div class="mq-step active" id="mq-s1">1 · Upload</div>
+    <div class="mq-step"        id="mq-s2">2 · Process</div>
+    <div class="mq-step"        id="mq-s3">3 · Material</div>
+    <div class="mq-step"        id="mq-s4">4 · Quote</div>
+  </div>
+
+  <div class="mq-body">
+
+    <div class="mq-screen on" id="mq-upload">
+      <p class="mq-heading">Upload your 3D files</p>
+
+      <div class="mq-drop" id="mq-zone">
+        <input type="file" id="mq-input" accept=".stl,.obj,.ply,.glb,.gltf" multiple style="display:none">
+        <span class="mq-drop-icon">📂</span>
+        <p>Drag &amp; drop <strong>3D files</strong> here<br>
+           or <strong id="mq-browse">click to browse</strong></p>
+        <p class="mq-formats">STL · OBJ · PLY · GLB · GLTF</p>
+      </div>
+
+      <!-- 3D mesh preview -->
+      <div class="mq-3d-wrap" id="mq-3d-wrap">
+        <canvas id="mq-canvas"></canvas>
+        <div class="mq-3d-overlay" id="mq-3d-overlay">
+          <span class="mq-3d-empty-msg">Select a file below to preview</span>
+        </div>
+        <div class="mq-3d-filename" id="mq-3d-filename" style="display:none"></div>
+        <div class="mq-3d-hint">Drag to rotate · Scroll to zoom</div>
+      </div>
+
+      <div class="mq-file-list" id="mq-file-list"></div>
+      <div id="mq-upload-err"></div>
+      <button class="mq-continue" id="mq-continue">Continue →</button>
+    </div>
+
+    <div class="mq-screen" id="mq-process">
+      <button class="mq-back" id="mq-back-proc">&#8592; Back</button>
+      <p class="mq-heading">Select manufacturing process</p>
+      <div class="mq-grid-2">
+        <button class="mq-opt" id="mq-fdm" data-p="FDM">FDM<small>Fused Deposition Modeling — filament-based printing. Fast, affordable, wide material selection.</small></button>
+        <button class="mq-opt" id="mq-sla" data-p="SLA">SLA<small>Stereolithography — resin-based printing. Ultra-fine detail and smooth surface finish.</small></button>
+      </div>
+      <div id="mq-proc-warn"></div>
+    </div>
+
+    <div class="mq-screen" id="mq-material">
+      <button class="mq-back" id="mq-back-mat">&#8592; Back</button>
+      <p class="mq-heading">Select material</p>
+      <div class="mq-grid-4" id="mq-mat-grid"></div>
+      <div id="mq-mat-err"></div>
+    </div>
+
+    <div class="mq-screen" id="mq-quote">
+      <button class="mq-back" id="mq-back-quote">&#8592; Back</button>
+      <p class="mq-heading">Your instant quote</p>
+      <div id="mq-quote-body"></div>
+    </div>
+
+    <div class="mq-screen" id="mq-loading">
+      <div class="mq-loader">
+        <div class="mq-spinner"></div>
+        <p id="mq-load-txt">Analysing files…</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── CONFIG — update these two lines before going live ────────────────────────
+const API_BASE      = 'https://YOUR-BACKEND.railway.app';
+const QUOTE_EMAIL   = 'quotes@mithrilplastics.com';
+const MOCK_MODE     = true; // set false after deploying backend
+const FORMSPREE_URL = 'https://formspree.io/f/mojrlbvn';
+
+const BUILD_VOL = {
+  FDM: { x: 254, y: 254, z: 254 },
+  SLA: { x: 298, y: 164, z: 300 },
+};
+
+const MATERIALS = {
+  FDM: [
+    { key: 'PLA',      label: 'PLA',               desc: 'Rigid, low warping, easy to print. Best for prototypes and display models.' },
+    { key: 'ABS',      label: 'ABS',               desc: 'Tough and heat-resistant. Great for enclosures and functional parts.' },
+    { key: 'PETG',     label: 'PETG',              desc: 'Strong with good chemical resistance. Ideal for durable functional parts.' },
+    { key: 'TPU',      label: 'TPU',               desc: 'Flexible and rubber-like. Perfect for gaskets, grips, and wearables.' },
+    { key: 'Nylon',    label: 'Nylon (PA12)',      desc: 'Impact-resistant with low friction. Best for gears and load-bearing parts.' },
+    { key: 'ASA',      label: 'ASA',               desc: 'UV and weather resistant. Ideal for outdoor and automotive parts.' },
+    { key: 'PET',      label: 'PET',               desc: 'Stiff with low moisture absorption. Good for housings and containers.' },
+    { key: 'PC',       label: 'Polycarbonate',     desc: 'Extremely tough and heat-resistant. For demanding mechanical and electrical parts.' },
+    { key: 'PLA-CF',   label: 'PLA Carbon Fiber',  desc: 'Lightweight and rigid. Best for stiff structural prototypes and cosmetic parts.' },
+    { key: 'ABS-CF',   label: 'ABS Carbon Fiber',  desc: 'High stiffness with excellent surface quality. For high-performance functional parts.' },
+    { key: 'PETG-CF',  label: 'PETG Carbon Fiber', desc: 'Rigid and dimensionally stable. For load-bearing assemblies and brackets.' },
+    { key: 'TPU-CF',   label: 'TPU Carbon Fiber',  desc: 'Semi-flexible with added stiffness. For wear-resistant flexible components.' },
+    { key: 'Nylon-CF', label: 'Nylon Carbon Fiber',desc: 'Exceptional strength-to-weight ratio. For aerospace, robotics, and structural brackets.' },
+    { key: 'ASA-CF',   label: 'ASA Carbon Fiber',  desc: 'Weather resistant with added stiffness. For outdoor structural applications.' },
+    { key: 'Nylon-GF', label: 'Nylon Glass Fiber', desc: 'High stiffness and dimensional stability. For precision housings and mechanical parts.' },
+    { key: 'PC-GF',    label: 'PC Glass Fiber',    desc: 'High strength and heat resistance. For structural enclosures and electrical components.' },
+  ],
+  SLA: [
+    { key: 'Standard',  label: 'Standard Resin',  desc: 'Smooth finish and fine detail. Great for visual prototypes and display models.' },
+    { key: 'Clear',     label: 'Clear Resin',      desc: 'Optically transparent when finished. Best for lenses, fluid channels, and displays.' },
+    { key: 'High Temp', label: 'High Temp Resin',  desc: 'Withstands up to ~289°C. For molds, jigs, and heat-exposed functional parts.' },
+    { key: 'ABS-Like',  label: 'ABS-Like Resin',   desc: 'Tough and impact-resistant. Great for functional prototypes and snap-fit housings.' },
+    { key: 'Flexible',  label: 'Flexible Resin',   desc: 'Rubber-like flexibility and durability. For seals, grips, and soft prototypes.' },
+  ],
+};
+
+const QTY_BREAKS = [
+  { min: 1,  max: 5,    pct: 0  },
+  { min: 6,  max: 20,   pct: 8  },
+  { min: 21, max: 50,   pct: 15 },
+  { min: 51, max: null, pct: 22 },
+];
+
+const MOCK_RATES = {
+  FDM: { machineRatePerHr: 2.50, cm3PerHr: 8,
+    mats: { 'PLA':0.15,'ABS':0.18,'PETG':0.17,'TPU':0.25,'Nylon':0.28,'ASA':0.20,'PET':0.16,'PC':0.32,
+            'PLA-CF':0.36,'ABS-CF':0.42,'PETG-CF':0.38,'TPU-CF':0.46,'Nylon-CF':0.58,'ASA-CF':0.44,'Nylon-GF':0.50,'PC-GF':0.54 } },
+  SLA: { machineRatePerHr: 5.00, cm3PerHr: 18,
+    mats: { 'Standard':0.30,'Clear':0.36,'High Temp':0.65,'ABS-Like':0.33,'Flexible':0.48 } },
+};
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+const S = {
+  files: [],        // { fileName, bbox, volume, fdmFits, slaFits, qty, geometry }
+  selectedIdx: -1,
+  process: null,
+  material: null,
+  materialLabel: '',
+  quote: null,
+};
+
+// ── SCREENS ──────────────────────────────────────────────────────────────────
+const STEP_MAP = { upload: 1, process: 2, material: 3, quote: 4, loading: null };
+function show(id) {
+  document.querySelectorAll('.mq-screen').forEach(el => el.classList.remove('on'));
+  document.getElementById('mq-' + id).classList.add('on');
+  const n = STEP_MAP[id];
+  [1,2,3,4].forEach(i => {
+    const el = document.getElementById('mq-s' + i);
+    el.classList.remove('active', 'done');
+    if (n) { if (i === n) el.classList.add('active'); else if (i < n) el.classList.add('done'); }
+  });
+}
+function setLoad(msg) { document.getElementById('mq-load-txt').textContent = msg; show('loading'); }
+
+// ── THREE.JS VIEWER ──────────────────────────────────────────────────────────
+let renderer, scene, camera, controls, displayMesh;
+
+function initRenderer() {
+  const canvas = document.getElementById('mq-canvas');
+  const wrap   = document.getElementById('mq-3d-wrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(W, H);
+  renderer.setClearColor(0x06000f);
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(45, W / H, 0.001, 1e6);
+  camera.position.set(200, 150, 300);
+
+  scene.add(new THREE.AmbientLight(0x9060c0, 0.5));
+  const sun = new THREE.DirectionalLight(0xd0b0ff, 0.9);
+  sun.position.set(1, 2, 3);
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0x54f2e5, 0.35);
+  fill.position.set(-2, -1, -2);
+  scene.add(fill);
+
+  controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.07;
+
+  (function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); })();
+
+  window.addEventListener('resize', () => {
+    const W2 = wrap.clientWidth, H2 = wrap.clientHeight;
+    renderer.setSize(W2, H2);
+    camera.aspect = W2 / H2;
+    camera.updateProjectionMatrix();
+  });
+}
+
+function showMeshForFile(idx) {
+  if (!renderer) initRenderer();
+
+  const file = S.files[idx];
+  if (displayMesh) { scene.remove(displayMesh); displayMesh.geometry.dispose(); displayMesh.material.dispose(); displayMesh = null; }
+
+  const geo = file.geometry.clone();
+  geo.computeBoundingBox();
+  geo.computeVertexNormals();
+
+  const box    = new THREE.Box3().setFromBufferAttribute(geo.attributes.position);
+  const center = new THREE.Vector3(); box.getCenter(center);
+  const size   = new THREE.Vector3(); box.getSize(size);
+
+  geo.translate(-center.x, -center.y, -center.z);
+
+  displayMesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({
+    color: 0x7c10e0, specular: 0x54f2e5, shininess: 90, side: THREE.DoubleSide,
+  }));
+  scene.add(displayMesh);
+
+  const maxDim = Math.max(size.x, size.y, size.z) || 100;
+  const dist   = maxDim / Math.tan((camera.fov * Math.PI / 180) / 2) * 0.78;
+  camera.position.set(dist * 0.7, dist * 0.45, dist);
+  camera.lookAt(0, 0, 0);
+  controls.target.set(0, 0, 0);
+  controls.update();
+
+  document.getElementById('mq-3d-overlay').style.display = 'none';
+  const label = document.getElementById('mq-3d-filename');
+  label.textContent = file.fileName;
+  label.style.display = 'block';
+}
+
+// ── STL PARSER ───────────────────────────────────────────────────────────────
+function parseSTLToVerts(buffer) {
+  const view = new DataView(buffer);
+  const triCount = view.getUint32(80, true);
+  const looksLikeBinary = Math.abs(buffer.byteLength - (84 + triCount * 50)) < 4;
+  const headerText = new TextDecoder().decode(new Uint8Array(buffer, 0, 80));
+  if (headerText.trimStart().startsWith('solid') && !looksLikeBinary) {
+    const text = new TextDecoder().decode(buffer);
+    const re = /vertex\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)/g;
+    const c = []; let m;
+    while ((m = re.exec(text)) !== null) c.push(+m[1], +m[2], +m[3]);
+    return new Float32Array(c);
+  }
+  const verts = new Float32Array(triCount * 9);
+  let src = 84, dst = 0;
+  for (let i = 0; i < triCount; i++) {
+    src += 12;
+    for (let j = 0; j < 9; j++) { verts[dst++] = view.getFloat32(src, true); src += 4; }
+    src += 2;
+  }
+  return verts;
+}
+
+// ── GEOMETRY HELPERS ─────────────────────────────────────────────────────────
+function computeVolumeFromGeo(geo) {
+  const pos = geo.attributes.position;
+  const idx = geo.index;
+  let vol = 0;
+  let minX=1e9, minY=1e9, minZ=1e9, maxX=-1e9, maxY=-1e9, maxZ=-1e9;
+
+  function tri(i0, i1, i2) {
+    const x1=pos.getX(i0), y1=pos.getY(i0), z1=pos.getZ(i0);
+    const x2=pos.getX(i1), y2=pos.getY(i1), z2=pos.getZ(i1);
+    const x3=pos.getX(i2), y3=pos.getY(i2), z3=pos.getZ(i2);
+    vol += x1*(y2*z3-y3*z2) + y1*(z2*x3-z3*x2) + z1*(x2*y3-x3*y2);
+    minX=Math.min(minX,x1,x2,x3); maxX=Math.max(maxX,x1,x2,x3);
+    minY=Math.min(minY,y1,y2,y3); maxY=Math.max(maxY,y1,y2,y3);
+    minZ=Math.min(minZ,z1,z2,z3); maxZ=Math.max(maxZ,z1,z2,z3);
+  }
+
+  if (idx) {
+    for (let i = 0; i < idx.count; i += 3) tri(idx.getX(i), idx.getX(i+1), idx.getX(i+2));
+  } else {
+    for (let i = 0; i < pos.count; i += 3) tri(i, i+1, i+2);
+  }
+
+  return {
+    volume: +(Math.abs(vol) / 6000).toFixed(4),
+    bbox: { x:+(maxX-minX).toFixed(2), y:+(maxY-minY).toFixed(2), z:+(maxZ-minZ).toFixed(2) },
+  };
+}
+
+function extractFirstGeometry(object) {
+  let geo = null;
+  object.traverse(child => { if (!geo && child.isMesh && child.geometry) geo = child.geometry; });
+  if (!geo) throw new Error('No geometry found');
+  return geo;
+}
+
+function fitsIn(bbox, process) {
+  const part  = [bbox.x, bbox.y, bbox.z].sort((a,b) => a-b);
+  const build = Object.values(BUILD_VOL[process]).sort((a,b) => a-b);
+  return part.every((d,i) => d <= build[i]);
+}
+
+// ── FILE LOADING ─────────────────────────────────────────────────────────────
+const SUPPORTED = ['stl', 'obj', 'ply', 'glb', 'gltf'];
+
+function readBuffer(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = rej;
+    r.readAsArrayBuffer(file);
+  });
+}
+
+async function loadGeometry(buffer, ext) {
+  switch (ext) {
+    case 'stl': {
+      const verts = parseSTLToVerts(buffer);
+      if (!verts.length) throw new Error('empty');
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+      return geo;
+    }
+    case 'ply':
+      return new THREE.PLYLoader().parse(buffer);
+    case 'obj': {
+      const text = new TextDecoder().decode(buffer);
+      return extractFirstGeometry(new THREE.OBJLoader().parse(text));
+    }
+    case 'glb':
+    case 'gltf': {
+      const blob = new Blob([buffer]);
+      const url  = URL.createObjectURL(blob);
+      return new Promise((res, rej) => {
+        new THREE.GLTFLoader().load(url, gltf => {
+          URL.revokeObjectURL(url);
+          res(extractFirstGeometry(gltf.scene));
+        }, undefined, rej);
+      });
+    }
+    default:
+      throw new Error('Unsupported format: .' + ext);
+  }
+}
+
+async function parseOneFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!SUPPORTED.includes(ext)) throw Object.assign(new Error(), { name: file.name });
+  const buffer   = await readBuffer(file);
+  const geometry = await loadGeometry(buffer, ext);
+  const { volume, bbox } = computeVolumeFromGeo(geometry);
+  return { fileName: file.name, bbox, volume, fdmFits: fitsIn(bbox,'FDM'), slaFits: fitsIn(bbox,'SLA'), qty: 1, geometry, originalFile: file };
+}
+
+function handleFiles(fileList) {
+  const all = Array.from(fileList);
+  const supported   = all.filter(f => SUPPORTED.includes(f.name.split('.').pop().toLowerCase()));
+  const unsupported = all.filter(f => !SUPPORTED.includes(f.name.split('.').pop().toLowerCase()));
+
+  if (!supported.length) {
+    document.getElementById('mq-upload-err').innerHTML =
+      '<div class="mq-err">Supported formats: STL, OBJ, PLY, GLB, GLTF</div>';
+    return;
+  }
+  document.getElementById('mq-upload-err').innerHTML = '';
+  setLoad(supported.length === 1 ? 'Loading ' + supported[0].name + '…' : 'Loading ' + supported.length + ' files…');
+
+  Promise.allSettled(supported.map(parseOneFile)).then(results => {
+    const ok     = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+    const failed = results.filter(r => r.status === 'rejected').map((r, i) => supported[i].name);
+
+    const prevCount = S.files.length;
+    S.files.push(...ok);
+    show('upload');
+
+    if (ok.length && prevCount === 0) selectFile(0);
+    else if (ok.length) selectFile(S.files.length - ok.length);
+
+    renderFileList();
+
+    const msgs = [];
+    if (failed.length)      msgs.push('Could not load: ' + failed.join(', '));
+    if (unsupported.length) msgs.push('Unsupported: ' + unsupported.map(f => f.name).join(', '));
+    document.getElementById('mq-upload-err').innerHTML =
+      msgs.length ? '<div class="mq-err">' + msgs.join('<br>') + '</div>' : '';
+  });
+}
+
+// ── FILE SELECTION ────────────────────────────────────────────────────────────
+function selectFile(idx) {
+  S.selectedIdx = idx;
+  document.getElementById('mq-3d-wrap').classList.add('visible');
+  showMeshForFile(idx);
+  renderFileList();
+}
+
+function removeFile(idx) {
+  S.files.splice(idx, 1);
+  if (!S.files.length) {
+    S.selectedIdx = -1;
+    document.getElementById('mq-3d-wrap').classList.remove('visible');
+    if (displayMesh) { scene.remove(displayMesh); displayMesh.geometry.dispose(); displayMesh.material.dispose(); displayMesh = null; }
+  } else {
+    selectFile(Math.min(idx, S.files.length - 1));
+  }
+  renderFileList();
+}
+
+function renderFileList() {
+  const list = document.getElementById('mq-file-list');
+  const btn  = document.getElementById('mq-continue');
+
+  if (!S.files.length) { list.innerHTML = ''; btn.classList.remove('visible'); return; }
+
+  list.innerHTML = S.files.map((f, i) => `
+    <div class="mq-fi ${S.selectedIdx === i ? 'selected' : ''}" data-idx="${i}">
+      <span class="mq-fi-icon">📐</span>
+      <div class="mq-fi-info">
+        <div class="mq-fi-name">${f.fileName}</div>
+        <div class="mq-fi-meta">${f.bbox.x} \xd7 ${f.bbox.y} \xd7 ${f.bbox.z} mm &nbsp;\xb7&nbsp; ${f.volume} cm\xb3</div>
+        <div class="mq-fi-tags">
+          ${f.fdmFits ? '<span class="mq-fi-tag">FDM ✓</span>' : '<span class="mq-fi-tag warn">FDM ✗</span>'}
+          ${f.slaFits ? '<span class="mq-fi-tag">SLA ✓</span>' : '<span class="mq-fi-tag warn">SLA ✗</span>'}
+        </div>
+      </div>
+      <button class="mq-fi-del" data-idx="${i}" title="Remove">✕</button>
+    </div>`).join('');
+
+  list.querySelectorAll('.mq-fi').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('.mq-fi-del')) return;
+      selectFile(+el.dataset.idx);
+    });
+  });
+  list.querySelectorAll('.mq-fi-del').forEach(b => {
+    b.addEventListener('click', e => { e.stopPropagation(); removeFile(+b.dataset.idx); });
+  });
+
+  btn.textContent = 'Continue with ' + S.files.length + ' file' + (S.files.length > 1 ? 's' : '') + ' →';
+  btn.classList.add('visible');
+}
+
+// ── DROP ZONE ────────────────────────────────────────────────────────────────
+const zone  = document.getElementById('mq-zone');
+const input = document.getElementById('mq-input');
+
+document.getElementById('mq-browse').addEventListener('click', () => input.click());
+zone.addEventListener('click', e => { if (!e.target.closest('#mq-browse')) input.click(); });
+zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('over'));
+zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('over'); handleFiles(e.dataTransfer.files); });
+input.addEventListener('change', e => { handleFiles(e.target.files); input.value = ''; });
+
+document.getElementById('mq-continue').addEventListener('click', () => { renderProcess(); show('process'); });
+
+// ── PROCESS ──────────────────────────────────────────────────────────────────
+document.getElementById('mq-back-proc').addEventListener('click', () => show('upload'));
+
+function renderProcess() {
+  const anyFDM = S.files.some(f => f.fdmFits);
+  const anySLA = S.files.some(f => f.slaFits);
+  document.getElementById('mq-fdm').disabled = !anyFDM;
+  document.getElementById('mq-sla').disabled = !anySLA;
+
+  const warns = [];
+  const fdmSkip = S.files.filter(f => !f.fdmFits).map(f => f.fileName);
+  const slaSkip = S.files.filter(f => !f.slaFits).map(f => f.fileName);
+  if (fdmSkip.length && anyFDM) warns.push('FDM: ' + fdmSkip.join(', ') + ' exceed build volume and will be skipped.');
+  if (slaSkip.length && anySLA) warns.push('SLA: ' + slaSkip.join(', ') + ' exceed build volume and will be skipped.');
+  if (!anyFDM) warns.push('No files fit the FDM build volume (254 \xd7 254 \xd7 254 mm).');
+  if (!anySLA) warns.push('No files fit the SLA build volume (298 \xd7 164 \xd7 300 mm).');
+
+  document.getElementById('mq-proc-warn').innerHTML =
+    warns.length ? '<div class="mq-warn">' + warns.join('<br>') + '</div>' : '';
+
+  ['mq-fdm', 'mq-sla'].forEach(id => {
+    const btn = document.getElementById(id);
+    btn.onclick = () => { S.process = btn.dataset.p; renderMaterials(); show('material'); };
+  });
+}
+
+// ── MATERIAL ─────────────────────────────────────────────────────────────────
+document.getElementById('mq-back-mat').addEventListener('click', () => show('process'));
+
+function renderMaterials() {
+  const grid = document.getElementById('mq-mat-grid');
+  grid.innerHTML = '';
+  document.getElementById('mq-mat-err').innerHTML = '';
+  MATERIALS[S.process].forEach(mat => {
+    const btn = document.createElement('button');
+    btn.className = 'mq-opt';
+    btn.innerHTML = mat.label + (mat.desc ? '<small>' + mat.desc + '</small>' : '');
+    btn.onclick = () => { S.material = mat.key; S.materialLabel = mat.label; buildQuote(); };
+    grid.appendChild(btn);
+  });
+}
+
+// ── QUOTE ────────────────────────────────────────────────────────────────────
+document.getElementById('mq-back-quote').addEventListener('click', () => show('material'));
+
+function discountPct(qty) {
+  const t = QTY_BREAKS.find(t => qty >= t.min && (t.max === null || qty <= t.max));
+  return t ? t.pct : 0;
+}
+
+function calcLine(file) {
+  const cfg  = MOCK_RATES[S.process];
+  const rate = cfg.mats[S.material] || 0.20;
+  const hrs  = file.volume / cfg.cm3PerHr;
+  const base = +(file.volume * rate + hrs * cfg.machineRatePerHr).toFixed(2);
+  const pct  = discountPct(file.qty);
+  const unit = +(base * (1 - pct / 100)).toFixed(2);
+  return { base, unit, pct, lineTotal: +(unit * file.qty).toFixed(2), leadDays: Math.max(3, Math.ceil((file.qty * hrs) / 16) + 2) };
+}
+
+async function buildQuote() {
+  setLoad('Calculating your quote…');
+  document.getElementById('mq-mat-err').innerHTML = '';
+  const eligible = S.files.filter(f => f[S.process === 'FDM' ? 'fdmFits' : 'slaFits']);
+  if (!eligible.length) {
+    show('material');
+    document.getElementById('mq-mat-err').innerHTML = '<div class="mq-err">No uploaded files fit the selected process.</div>';
+    return;
+  }
+  if (MOCK_MODE) await new Promise(r => setTimeout(r, 500));
+  S.quote = { eligible };
+  renderQuote();
+  show('quote');
+}
+
+function renderQuote() {
+  var eligible = S.quote.eligible;
+  var items = eligible.map(function(f) { return Object.assign({ file: f }, calcLine(f)); });
+  var grandTotal = function() { return +items.reduce(function(s, it) { return s + it.lineTotal; }, 0).toFixed(2); };
+  var maxLead    = function() { return Math.max.apply(null, items.map(function(it) { return it.leadDays; })); };
+  var filesSummary = function() {
+    return items.map(function(it) {
+      return it.file.fileName + ‘ | ‘ + it.file.volume + ‘ cm\xb3 | qty ‘ + it.file.qty + ‘ | $’ + it.lineTotal.toFixed(2);
+    }).join(‘\n’);
+  };
+
+  document.getElementById(‘mq-quote-body’).innerHTML =
+    ‘<div class="mq-quote-meta"><strong>’ + S.process + ‘ \xb7 ‘ + S.materialLabel + ‘</strong>’ +
+    ‘<span id="mq-lead">Est. ‘ + maxLead() + ‘ business days</span></div>’ +
+    ‘<div class="mq-fl-header"><span>File</span><span>Unit price</span><span>Qty</span><span>Total</span></div>’ +
+    ‘<div id="mq-lines">’ + items.map(function(it, i) {
+      return ‘<div class="mq-fl" data-idx="’ + i + ‘">’ +
+        ‘<div><div class="mq-fl-name">’ + it.file.fileName + ‘</div><div class="mq-fl-sub">’ + it.file.volume + ‘ cm\xb3</div></div>’ +
+        ‘<div class="mq-fl-vol">$’ + it.unit.toFixed(2) + ‘ / ea</div>’ +
+        ‘<div class="mq-fl-qty"><div class="mq-stepper"><button class="mq-dec">−</button>’ +
+        ‘<input type="number" min="1" value="’ + it.file.qty + ‘" class="mq-qty-inp">’ +
+        ‘<button class="mq-inc">+</button></div>’ +
+        (it.pct > 0 ? ‘<span class="mq-badge">−’ + it.pct + ‘%</span>’ : ‘’) + ‘</div>’ +
+        ‘<div class="mq-fl-price mq-line-total">$’ + it.lineTotal.toFixed(2) + ‘</div>’ +
+      ‘</div>’;
+    }).join(‘’) + ‘</div>’ +
+    ‘<div class="mq-grand-row"><span>Grand Total</span><span id="mq-grand">$’ + grandTotal().toFixed(2) + ‘</span></div>’ +
+
+    ‘<div class="mq-success" id="mq-success" style="display:none">’ +
+      ‘<div class="mq-success-icon">✅</div>’ +
+      ‘<h3>Quote request received!</h3>’ +
+      ‘<p>We’ll review your files and follow up within one business day.</p>’ +
+    ‘</div>’ +
+    ‘<div id="mq-submit-err"></div>’ +
+    ‘<div id="mq-contact-form">’ +
+      ‘<p class="mq-contact-heading">Where should we send your quote?</p>’ +
+      ‘<input class="mq-inp" id="mq-c-name"    type="text"  placeholder="Full name *"        autocomplete="name">’ +
+      ‘<input class="mq-inp" id="mq-c-company" type="text"  placeholder="Company (optional)" autocomplete="organization">’ +
+      ‘<input class="mq-inp" id="mq-c-email"   type="email" placeholder="Email address *"    autocomplete="email">’ +
+      ‘<p class="mq-contact-heading" style="margin-top:8px">Add a note</p>’ +
+      ‘<textarea class="mq-inp mq-note" id="mq-c-note" placeholder="Are there any details we should know about, such as print orientation or how the prints will be used?"></textarea>’ +
+      ‘<button class="mq-cta" id="mq-req-btn">Submit Quote Request →</button>’ +
+      ‘<p class="mq-footnote">Estimate only — final price confirmed after review.</p>’ +
+    ‘</div>’;
+
+  document.getElementById(‘mq-lines’).addEventListener(‘click’, function(e) {
+    var row = e.target.closest(‘.mq-fl’);
+    if (!row) return;
+    var idx = +row.dataset.idx, inp = row.querySelector(‘.mq-qty-inp’);
+    if (e.target.classList.contains(‘mq-dec’)) applyQty(idx, +inp.value - 1);
+    if (e.target.classList.contains(‘mq-inc’)) applyQty(idx, +inp.value + 1);
+  });
+  document.getElementById(‘mq-lines’).addEventListener(‘change’, function(e) {
+    if (e.target.classList.contains(‘mq-qty-inp’)) {
+      var row = e.target.closest(‘.mq-fl’);
+      if (row) applyQty(+row.dataset.idx, +e.target.value);
+    }
+  });
+
+  document.getElementById(‘mq-req-btn’).addEventListener(‘click’, async function() {
+    var nameEl    = document.getElementById(‘mq-c-name’);
+    var emailEl   = document.getElementById(‘mq-c-email’);
+    var companyEl = document.getElementById(‘mq-c-company’);
+    var errEl     = document.getElementById(‘mq-submit-err’);
+    var name    = nameEl.value.trim();
+    var email   = emailEl.value.trim();
+    var company = companyEl.value.trim();
+    var note    = document.getElementById('mq-c-note').value.trim();
+
+    nameEl.classList.remove(‘error’); emailEl.classList.remove(‘error’);
+    errEl.innerHTML = ‘’;
+    var valid = true;
+    if (!name)  { nameEl.classList.add(‘error’);  valid = false; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { emailEl.classList.add(‘error’); valid = false; }
+    if (!valid) { errEl.innerHTML = ‘<p class="mq-submit-err">Please fill in the required fields.</p>’; return; }
+
+    var btn = document.getElementById(‘mq-req-btn’);
+    btn.disabled = true; btn.textContent = ‘Submitting…’;
+
+    var fd = new FormData();
+    fd.append(‘name’,        name);
+    fd.append(‘email’,       email);
+    if (company) fd.append(‘company’, company);
+    fd.append(‘process’,     S.process);
+    fd.append(‘material’,    S.materialLabel);
+    fd.append(‘quote’,       filesSummary());
+    fd.append(‘grand_total’, ‘$’ + grandTotal().toFixed(2));
+    fd.append(‘lead_time’,   ‘Est. ‘ + maxLead() + ‘ business days’);
+    if (note) fd.append(‘note’, note);
+    eligible.forEach(function(f) { if (f.originalFile) fd.append(‘attachment’, f.originalFile, f.fileName); });
+
+    try {
+      var res  = await fetch(FORMSPREE_URL, { method: ‘POST’, headers: { ‘Accept’: ‘application/json’ }, body: fd });
+      var data = await res.json();
+      if (res.ok) {
+        document.getElementById(‘mq-contact-form’).style.display = ‘none’;
+        document.getElementById(‘mq-success’).style.display = ‘block’;
+      } else {
+        btn.disabled = false; btn.textContent = ‘Submit Quote Request →’;
+        errEl.innerHTML = ‘<p class="mq-submit-err">’ + (data.error || ‘Submission failed — please try again.’) + ‘</p>’;
+      }
+    } catch(e) {
+      btn.disabled = false; btn.textContent = ‘Submit Quote Request →’;
+      errEl.innerHTML = ‘<p class="mq-submit-err">Network error — please check your connection and try again.</p>’;
+    }
+  });
+
+  function applyQty(idx, val) {
+    val = Math.max(1, parseInt(val) || 1);
+    items[idx].file.qty = val;
+    const row  = document.querySelector('#mq-lines .mq-fl[data-idx="' + idx + '"]');
+    row.querySelector('.mq-qty-inp').value = val;
+    const it   = items[idx];
+    const pct  = discountPct(val);
+    const unit = +(it.base * (1 - pct / 100)).toFixed(2);
+    it.lineTotal = +(unit * val).toFixed(2);
+    it.pct = pct;
+    it.leadDays = Math.max(3, Math.ceil((val * (it.file.volume / MOCK_RATES[S.process].cm3PerHr)) / 16) + 2);
+    row.querySelector('.mq-line-total').textContent = '$' + it.lineTotal.toFixed(2);
+    let badge = row.querySelector('.mq-badge');
+    if (pct > 0) {
+      if (!badge) { badge = document.createElement('span'); badge.className = 'mq-badge'; row.querySelector('.mq-fl-qty').appendChild(badge); }
+      badge.textContent = '−' + pct + '%';
+    } else if (badge) badge.remove();
+    document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
+    document.getElementById('mq-lead').textContent  = 'Est. ' + maxLead() + ' business days';
+  }
+}
+</script>
