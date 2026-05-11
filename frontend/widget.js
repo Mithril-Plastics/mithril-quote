@@ -891,10 +891,16 @@ function renderQuote() {
           succEl.style.display = 'block';
 
           // Send customer confirmation email via EmailJS
-          if (window.emailjs && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID) {
+          var ejsReady = !!window.emailjs;
+          var ejsEl = document.getElementById('mq-success');
+          if (!ejsReady) {
+            ejsEl.insertAdjacentHTML('beforeend', '<p style="color:#f90;font-size:12px">DEBUG: emailjs not loaded</p>');
+          } else if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) {
+            ejsEl.insertAdjacentHTML('beforeend', '<p style="color:#f90;font-size:12px">DEBUG: missing service/template ID</p>');
+          } else {
             emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-              to_name:     name,  // used by EmailJS "From Name" field
-              name:        name,  // used by {{name}} in HTML template body
+              to_name:     name,
+              name:        name,
               to_email:    email,
               company:     company || '',
               phone:       phone   || '',
@@ -904,8 +910,10 @@ function renderQuote() {
               parts_total: '$' + grandTotal().toFixed(2),
               lead_time:   'Est. ' + maxLead() + ' business days',
               note:        note   || '',
-            }).catch(function() {
-              // Silently fail — Formspree submission already succeeded
+            }).then(function() {
+              ejsEl.insertAdjacentHTML('beforeend', '<p style="color:#0f0;font-size:12px">DEBUG: email sent OK</p>');
+            }).catch(function(err) {
+              ejsEl.insertAdjacentHTML('beforeend', '<p style="color:#f00;font-size:12px">DEBUG email error: ' + JSON.stringify(err) + '</p>');
             });
           }
         } else {
