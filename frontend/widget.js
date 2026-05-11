@@ -5,6 +5,21 @@ const API_BASE      = _cfg.API_BASE      || 'https://YOUR-BACKEND.railway.app';
 const MOCK_MODE     = _cfg.MOCK_MODE     !== undefined ? _cfg.MOCK_MODE : true;
 const FORMSPREE_URL = _cfg.FORMSPREE_URL || 'https://formspree.io/f/mojrlbvn';
 
+const EMAILJS_PUBLIC_KEY  = _cfg.EMAILJS_PUBLIC_KEY  || '';
+const EMAILJS_SERVICE_ID  = _cfg.EMAILJS_SERVICE_ID  || '';
+const EMAILJS_TEMPLATE_ID = _cfg.EMAILJS_TEMPLATE_ID || '';
+// Initialise EmailJS as soon as the library is available
+(function initEmailJS() {
+  if (window.emailjs && EMAILJS_PUBLIC_KEY) {
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  } else if (EMAILJS_PUBLIC_KEY) {
+    // Library loads async — retry once it's ready
+    window.addEventListener('load', function() {
+      if (window.emailjs) emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+    });
+  }
+})();
+
 const BUILD_VOL = {
   FDM: { x: 254, y: 254, z: 254 },
   SLA: { x: 298, y: 164, z: 300 },
@@ -869,6 +884,24 @@ function renderQuote() {
             '<p>We\'ll review your files and follow up within one business day.</p>' +
             '<p class="mq-success-email">A confirmation has been sent to <strong>' + email + '</strong></p>';
           succEl.style.display = 'block';
+
+          // Send customer confirmation email via EmailJS
+          if (window.emailjs && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID) {
+            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+              to_name:     name,
+              to_email:    email,
+              company:     company || '',
+              phone:       phone   || '',
+              process:     S.process,
+              material:    S.materialLabel,
+              quote_lines: filesSummary(),
+              parts_total: '$' + grandTotal().toFixed(2),
+              lead_time:   'Est. ' + maxLead() + ' business days',
+              note:        note   || '',
+            }).catch(function() {
+              // Silently fail — Formspree submission already succeeded
+            });
+          }
         } else {
           btn.disabled = false; btn.textContent = 'Submit Quote Request →';
           errEl.innerHTML = '<p class="mq-submit-err">' + (r.data.error || 'Submission failed — please try again.') + '</p>';
