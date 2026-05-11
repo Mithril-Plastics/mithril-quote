@@ -716,12 +716,11 @@ function renderQuote() {
 
     /* ── Volume discount tier bar ── */
     (function() {
-      var totalQty = items.reduce(function(s, it) { return s + it.file.qty; }, 0);
       return '<div class="mq-discount-bar" id="mq-discount-bar">' +
         '<span class="mq-discount-bar-label">Volume discounts</span>' +
         QTY_BREAKS.filter(function(t) { return t.pct > 0; }).map(function(t) {
           var label  = (t.max ? t.min + '–' + t.max : t.min + '+') + ' units · ' + t.pct + '% off';
-          var active = totalQty >= t.min && (t.max === null || totalQty <= t.max);
+          var active = items.some(function(it) { return it.file.qty >= t.min && (t.max === null || it.file.qty <= t.max); });
           return '<span class="mq-discount-tier' + (active ? ' active' : '') + '" data-min="' + t.min + '" data-max="' + (t.max || '') + '">' + label + '</span>';
         }).join('') +
       '</div>';
@@ -954,11 +953,11 @@ function renderQuote() {
 function renderDiscountBar(items) {
   var bar = document.getElementById('mq-discount-bar');
   if (!bar || !items) return;
-  var totalQty = items.reduce(function(s, it) { return s + it.file.qty; }, 0);
   bar.querySelectorAll('.mq-discount-tier').forEach(function(el) {
     var min = +el.dataset.min;
     var max = el.dataset.max ? +el.dataset.max : Infinity;
-    el.classList.toggle('active', totalQty >= min && totalQty <= max);
+    var active = items.some(function(it) { return it.file.qty >= min && it.file.qty <= max; });
+    el.classList.toggle('active', active);
   });
 }
 
