@@ -888,7 +888,8 @@ function renderQuote() {
           // Send customer confirmation email via EmailJS
           if (window.emailjs && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID) {
             emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-              to_name:     name,
+              to_name:     name,  // used by EmailJS "From Name" field
+              name:        name,  // used by {{name}} in HTML template body
               to_email:    email,
               company:     company || '',
               phone:       phone   || '',
