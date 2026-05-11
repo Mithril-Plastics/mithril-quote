@@ -8,15 +8,20 @@ const FORMSPREE_URL = _cfg.FORMSPREE_URL || 'https://formspree.io/f/mojrlbvn';
 const EMAILJS_PUBLIC_KEY  = _cfg.EMAILJS_PUBLIC_KEY  || 'Vrpr3_PL5K3WW5y_i';
 const EMAILJS_SERVICE_ID  = _cfg.EMAILJS_SERVICE_ID  || 'service_4hxocin';
 const EMAILJS_TEMPLATE_ID = _cfg.EMAILJS_TEMPLATE_ID || '7hh0f1u';
-// Initialise EmailJS as soon as the library is available
+// Initialise EmailJS — load SDK dynamically if not already present
 (function initEmailJS() {
-  if (window.emailjs && EMAILJS_PUBLIC_KEY) {
-    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  function doInit() {
+    if (window.emailjs && EMAILJS_PUBLIC_KEY) {
+      emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+    }
+  }
+  if (window.emailjs) {
+    doInit();
   } else if (EMAILJS_PUBLIC_KEY) {
-    // Library loads async — retry once it's ready
-    window.addEventListener('load', function() {
-      if (window.emailjs) emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-    });
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+    s.onload = doInit;
+    document.head.appendChild(s);
   }
 })();
 
