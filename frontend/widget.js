@@ -5,9 +5,9 @@ const API_BASE      = _cfg.API_BASE      || 'https://YOUR-BACKEND.railway.app';
 const MOCK_MODE     = _cfg.MOCK_MODE     !== undefined ? _cfg.MOCK_MODE : true;
 const FORMSPREE_URL = _cfg.FORMSPREE_URL || 'https://formspree.io/f/mojrlbvn';
 
-const EMAILJS_PUBLIC_KEY  = _cfg.EMAILJS_PUBLIC_KEY  || '';
-const EMAILJS_SERVICE_ID  = _cfg.EMAILJS_SERVICE_ID  || '';
-const EMAILJS_TEMPLATE_ID = _cfg.EMAILJS_TEMPLATE_ID || '';
+const EMAILJS_PUBLIC_KEY  = _cfg.EMAILJS_PUBLIC_KEY  || 'Vrpr3_PL5K3WW5y_i';
+const EMAILJS_SERVICE_ID  = _cfg.EMAILJS_SERVICE_ID  || 'service_4hxocin';
+const EMAILJS_TEMPLATE_ID = _cfg.EMAILJS_TEMPLATE_ID || '7hh0f1u';
 // Initialise EmailJS as soon as the library is available
 (function initEmailJS() {
   if (window.emailjs && EMAILJS_PUBLIC_KEY) {
