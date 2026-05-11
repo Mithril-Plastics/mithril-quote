@@ -7,7 +7,7 @@ const FORMSPREE_URL = _cfg.FORMSPREE_URL || 'https://formspree.io/f/mojrlbvn';
 
 const EMAILJS_PUBLIC_KEY  = _cfg.EMAILJS_PUBLIC_KEY  || 'Vrpr3_PL5K3WW5y_i';
 const EMAILJS_SERVICE_ID  = _cfg.EMAILJS_SERVICE_ID  || 'service_4hxocin';
-const EMAILJS_TEMPLATE_ID = _cfg.EMAILJS_TEMPLATE_ID || '7hh0f1u';
+const EMAILJS_TEMPLATE_ID = _cfg.EMAILJS_TEMPLATE_ID || 'template_9oyivqc';
 // Initialise EmailJS — load SDK dynamically if not already present
 (function initEmailJS() {
   function doInit() {
