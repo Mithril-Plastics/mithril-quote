@@ -780,6 +780,7 @@ function renderQuote() {
     })() +
 
     '<div class="mq-grand-row"><span>Parts Total</span><span id="mq-grand">$' + grandTotal().toFixed(2) + '</span></div>' +
+    '<div class="mq-savings-row" id="mq-savings-row" style="display:none">🎉 You\'re saving <strong id="mq-savings"></strong> with volume pricing</div>' +
 
     /* ── Form body — hidden as a unit on success ── */
     '<div id="mq-form-body">' +
@@ -801,8 +802,9 @@ function renderQuote() {
       '<p>We\'ll review your files and follow up within one business day.</p>' +
     '</div>' +
     '<div id="mq-submit-err"></div>' +
-    '<button class="mq-cta" id="mq-req-btn">Submit Quote Request →</button>' +
-    '<p class="mq-footnote">Estimate only — final price confirmed after review.</p>';
+    '<p class="mq-trust-line">🔒 Your files are never shared · Prices confirmed within 1 business day</p>' +
+    '<button class="mq-cta" id="mq-req-btn">Request My Quote →</button>' +
+    '<p class="mq-footnote">Prices based on current material rates · Estimates typically valid for 30 days</p>';
 
   // ── Qty changes in quote line items ──────────────────────────────────────────
   document.getElementById('mq-lines').addEventListener('click', function(e) {
@@ -886,7 +888,7 @@ function renderQuote() {
             }).catch(function() {});
           }
         } else {
-          btn.disabled = false; btn.textContent = 'Submit Quote Request →';
+          btn.disabled = false; btn.textContent = 'Request My Quote →';
           errEl.innerHTML = '<p class="mq-submit-err">' + (r.data.error || 'Submission failed — please try again.') + '</p>';
         }
       })
@@ -915,7 +917,7 @@ function renderQuote() {
     } else if (badge) { badge.remove(); }
     document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
     document.getElementById('mq-lead').textContent  = 'Est. ' + maxLead() + ' business days';
-    renderDiscountBar(items);
+    renderDiscountBar(items);  // also updates savings row
     // Re-render shipping tier prices — weight changes with qty
     if (S.address.zip && S.address.zip.length >= 5) {
       renderShipOpts(eligible, S.address.zip);
@@ -928,8 +930,7 @@ function renderQuote() {
   }
 }
 
-// ── DISCOUNT BAR ─────────────────────────────────────────────────────────────
-// Highlight whichever tier the current total quantity falls into
+// ── DISCOUNT BAR + SAVINGS ────────────────────────────────────────────────────
 function renderDiscountBar(items) {
   var bar = document.getElementById('mq-discount-bar');
   if (!bar || !items) return;
@@ -939,6 +940,14 @@ function renderDiscountBar(items) {
     var active = items.some(function(it) { return it.file.qty >= min && it.file.qty <= max; });
     el.classList.toggle('active', active);
   });
+  // Show "You're saving $X" when any discount applies
+  var savings = +(items.reduce(function(s, it) { return s + (it.base - it.unit) * it.qty; }, 0)).toFixed(2);
+  var row = document.getElementById('mq-savings-row');
+  var el  = document.getElementById('mq-savings');
+  if (row && el) {
+    if (savings > 0) { el.textContent = '$' + savings.toFixed(2); row.style.display = ''; }
+    else             { row.style.display = 'none'; }
+  }
 }
 
 // ── STATE SELECT ─────────────────────────────────────────────────────────────
