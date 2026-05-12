@@ -853,12 +853,61 @@ function renderQuote() {
           var succEl = document.getElementById('mq-success');
           document.getElementById('mq-form-body').style.display = 'none';
           document.getElementById('mq-req-btn').style.display   = 'none';
+
+          // Generate a quote reference
+          var quoteRef = 'MQ-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (Date.now() % 10000).toString().padStart(4,'0');
+
+          // Snapshot all data for PDF generation
+          window.mqPDFData = {
+            ref:      quoteRef,
+            name:     name,
+            email:    email,
+            company:  company,
+            process:  S.process,
+            material: S.materialLabel,
+            leadTime: 'Est. ' + maxLead() + ' business days',
+            total:    grandTotal().toFixed(2),
+            note:     note,
+            items:    items.map(function(it) {
+              return { fileName: it.file.fileName, volume: it.file.volume,
+                       qty: it.file.qty, unit: it.unit.toFixed(2),
+                       pct: it.pct, lineTotal: it.lineTotal.toFixed(2) };
+            })
+          };
+
           succEl.innerHTML =
-            '<div class="mq-success-icon">✅</div>' +
-            '<h3>Quote request received!</h3>' +
-            '<p>We\'ll review your files and follow up within one business day.</p>' +
-            '<p class="mq-success-email">A confirmation has been sent to <strong>' + email + '</strong></p>';
+            '<div class="mq-success-header">' +
+              '<div class="mq-success-check">✅</div>' +
+              '<div>' +
+                '<h3 class="mq-success-title">Quote request received!</h3>' +
+                '<p class="mq-success-ref">Ref: <strong>' + quoteRef + '</strong></p>' +
+              '</div>' +
+            '</div>' +
+            '<p class="mq-success-sent">A confirmation has been sent to <strong>' + email + '</strong>. We\'ll follow up within one business day.</p>' +
+
+            '<div class="mq-success-summary">' +
+              '<div class="mq-success-meta-row">' +
+                '<span><label>Process</label>' + S.process + '</span>' +
+                '<span><label>Material</label>' + S.materialLabel + '</span>' +
+                '<span><label>Lead time</label>Est. ' + maxLead() + ' business days</span>' +
+              '</div>' +
+              '<div class="mq-success-fl-head"><span>File</span><span>Qty</span><span>Unit</span><span>Total</span></div>' +
+              items.map(function(it) {
+                return '<div class="mq-success-fl-row">' +
+                  '<span class="mq-success-fname">' + it.file.fileName + '</span>' +
+                  '<span>' + it.file.qty + '</span>' +
+                  '<span>$' + it.unit.toFixed(2) + '</span>' +
+                  '<span>$' + it.lineTotal.toFixed(2) + (it.pct > 0 ? '<em> −' + it.pct + '%</em>' : '') + '</span>' +
+                '</div>';
+              }).join('') +
+              '<div class="mq-success-total-row"><span>Parts Total</span><span>$' + grandTotal().toFixed(2) + '</span></div>' +
+              (note ? '<div class="mq-success-note"><strong>Notes:</strong> ' + note + '</div>' : '') +
+            '</div>' +
+
+            '<button class="mq-dl-btn" id="mq-dl-btn">⬇ Download PDF Summary</button>';
+
           succEl.style.display = 'block';
+          document.getElementById('mq-dl-btn').addEventListener('click', window.mqDownloadPDF);
 
           // Formspree auto-reply handles the customer confirmation email.
         } else {
@@ -925,6 +974,171 @@ function renderDiscountBar(items) {
     el.classList.toggle('active', active);
   });
 }
+
+// ── PDF DOWNLOAD ─────────────────────────────────────────────────────────────
+window.mqDownloadPDF = function() {
+  var btn = document.getElementById('mq-dl-btn');
+  if (btn) { btn.textContent = 'Generating…'; btn.disabled = true; }
+
+  function generate() {
+    if (!window.jspdf || !window.jspdf.jsPDF) { setTimeout(generate, 80); return; }
+    var d = window.mqPDFData;
+    if (!d) return;
+
+    var doc    = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+    var pageW  = 210;
+    var margin = 18;
+    var cW     = pageW - margin * 2;   // 174 mm usable width
+    var y      = 0;
+
+    // ── Header band ────────────────────────────────────────────────────────
+    doc.setFillColor(86, 5, 145);
+    doc.rect(0, 0, pageW, 38, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.text('MITHRIL PLASTICS', margin, 16);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Instant Quote Summary', margin, 24);
+    doc.setFontSize(8.5);
+    doc.text('Ref: ' + d.ref, margin, 31);
+    doc.text(new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }), pageW - margin, 31, { align: 'right' });
+
+    // ── Customer block ─────────────────────────────────────────────────────
+    y = 48;
+    doc.setTextColor(120, 120, 120);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('PREPARED FOR', margin, y);
+    y += 5;
+    doc.setTextColor(30, 30, 30);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(d.name, margin, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    doc.text(d.email, margin, y);
+    if (d.company) { y += 4.5; doc.text(d.company, margin, y); }
+
+    // ── Divider ────────────────────────────────────────────────────────────
+    y += 9;
+    doc.setDrawColor(220, 220, 220);
+    doc.line(margin, y, pageW - margin, y);
+    y += 8;
+
+    // ── Process / Material / Lead time ─────────────────────────────────────
+    doc.setTextColor(120, 120, 120);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('QUOTE DETAILS', margin, y);
+    y += 6;
+
+    var col3 = [0, 58, 116];
+    [['Process', d.process], ['Material', d.material], ['Lead Time', d.leadTime]].forEach(function(pair, i) {
+      var x = margin + col3[i];
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text(pair[0], x, y);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(30, 30, 30);
+      doc.text(pair[1], x, y + 5);
+    });
+    y += 14;
+
+    // ── File table ─────────────────────────────────────────────────────────
+    // col start positions (mm from left margin)
+    var tc = [0, 88, 102, 124, 150];
+    var th = 7;
+
+    // Header
+    doc.setFillColor(86, 5, 145);
+    doc.rect(margin, y, cW, th, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    ['File', 'Vol (cm³)', 'Qty', 'Unit Price', 'Total'].forEach(function(h, i) {
+      doc.text(h, margin + tc[i] + 2, y + 4.8);
+    });
+    y += th;
+
+    // Rows
+    d.items.forEach(function(it, idx) {
+      var rh = 7;
+      doc.setFillColor(idx % 2 === 0 ? 250 : 244, idx % 2 === 0 ? 250 : 244, idx % 2 === 0 ? 250 : 244);
+      doc.rect(margin, y, cW, rh, 'F');
+      doc.setTextColor(30, 30, 30);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      var fname = it.fileName.length > 42 ? it.fileName.slice(0, 39) + '…' : it.fileName;
+      doc.text(fname,           margin + tc[0] + 2, y + 4.8);
+      doc.text(it.volume + '',  margin + tc[1] + 2, y + 4.8);
+      doc.text(it.qty + '',     margin + tc[2] + 2, y + 4.8);
+      doc.text('$' + it.unit,   margin + tc[3] + 2, y + 4.8);
+      doc.text('$' + it.lineTotal, margin + tc[4] + 2, y + 4.8);
+      if (it.pct > 0) {
+        doc.setTextColor(34, 160, 90);
+        doc.setFontSize(7);
+        doc.text('−' + it.pct + '%', margin + tc[4] + 2 + doc.getTextWidth('$' + it.lineTotal) + 1, y + 4.8);
+      }
+      y += rh;
+    });
+
+    // Total row
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, y, pageW - margin, y);
+    y += 7;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(30, 30, 30);
+    doc.text('Parts Total', margin, y);
+    doc.text('$' + d.total, pageW - margin, y, { align: 'right' });
+    y += 10;
+
+    // ── Notes ──────────────────────────────────────────────────────────────
+    if (d.note) {
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, y, pageW - margin, y);
+      y += 7;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(120, 120, 120);
+      doc.text('ADDITIONAL NOTES', margin, y);
+      y += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(30, 30, 30);
+      var lines = doc.splitTextToSize(d.note, cW);
+      doc.text(lines, margin, y);
+    }
+
+    // ── Footer ─────────────────────────────────────────────────────────────
+    doc.setDrawColor(220, 220, 220);
+    doc.line(margin, 278, pageW - margin, 278);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(160, 160, 160);
+    doc.text('Prices based on current material rates. Estimates valid for 30 days and confirmed within 1 business day.', margin, 283);
+    doc.text('mithrilplastics.com', pageW - margin, 283, { align: 'right' });
+
+    doc.save('Mithril-Quote-' + d.ref + '.pdf');
+    if (btn) { btn.textContent = '⬇ Download PDF Summary'; btn.disabled = false; }
+  }
+
+  // Lazy-load jsPDF on first click
+  if (!window.jspdf) {
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+    s.onload = generate;
+    document.head.appendChild(s);
+  } else {
+    generate();
+  }
+};
 
 // ── STATE SELECT ─────────────────────────────────────────────────────────────
 function stateSelectHTML(id) {
