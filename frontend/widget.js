@@ -64,10 +64,11 @@ const MATERIALS = {
 };
 
 const QTY_BREAKS = [
-  { min: 1,  max: 5,    pct: 0  },
-  { min: 6,  max: 20,   pct: 8  },
-  { min: 21, max: 50,   pct: 15 },
-  { min: 51, max: null, pct: 22 },
+  { min: 1,  max: 4,    pct: 0  },
+  { min: 5,  max: 14,   pct: 8  },
+  { min: 15, max: 24,   pct: 15 },
+  { min: 25, max: 49,   pct: 22 },
+  { min: 50, max: null, pct: 28 },
 ];
 
 const MOCK_RATES = {
@@ -772,9 +773,14 @@ function renderQuote() {
       return '<div class="mq-discount-bar" id="mq-discount-bar">' +
         '<span class="mq-discount-bar-label">Volume discounts</span>' +
         QTY_BREAKS.filter(function(t) { return t.pct > 0; }).map(function(t) {
-          var label  = (t.max ? t.min + '–' + t.max : t.min + '+') + ' units · ' + t.pct + '% off';
+          var range  = t.max ? t.min + '–' + t.max : t.min + '+';
           var active = items.some(function(it) { return it.file.qty >= t.min && (t.max === null || it.file.qty <= t.max); });
-          return '<span class="mq-discount-tier' + (active ? ' active' : '') + '" data-min="' + t.min + '" data-max="' + (t.max || '') + '">' + label + '</span>';
+          var tierSave = items.reduce(function(s, it) { return s + it.base * (t.pct / 100) * t.min; }, 0);
+          return '<span class="mq-discount-tier' + (active ? ' active' : '') + '"' +
+            ' data-min="' + t.min + '" data-max="' + (t.max || '') + '" data-pct="' + t.pct + '">' +
+            range + ' units · ' + t.pct + '% off' +
+            '<em class="mq-tier-save">save ~$' + tierSave.toFixed(0) + ' at ' + t.min + '</em>' +
+            '</span>';
         }).join('') +
       '</div>';
     })() +
@@ -857,7 +863,11 @@ function renderQuote() {
     eligible.forEach(function(f) { if (f.originalFile) fd.append('attachment', f.originalFile, f.fileName); });
 
     fetch(FORMSPREE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
-      .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+      .then(function(res) {
+        return res.json()
+          .catch(function() { return {}; })           // handle non-JSON responses gracefully
+          .then(function(data) { return { ok: res.ok, data: data }; });
+      })
       .then(function(r) {
         if (r.ok) {
           clearSession();
@@ -893,8 +903,8 @@ function renderQuote() {
         }
       })
       .catch(function() {
-        btn.disabled = false; btn.textContent = 'Submit Quote Request →';
-        errEl.innerHTML = '<p class="mq-submit-err">Network error — please check your connection and try again.</p>';
+        btn.disabled = false; btn.textContent = 'Request My Quote →';
+        errEl.innerHTML = '<p class="mq-submit-err">Something went wrong — please try again or email us directly.</p>';
       });
   });
 
@@ -937,10 +947,15 @@ function renderDiscountBar(items) {
   bar.querySelectorAll('.mq-discount-tier').forEach(function(el) {
     var min = +el.dataset.min;
     var max = el.dataset.max ? +el.dataset.max : Infinity;
+    var pct = +el.dataset.pct;
     var active = items.some(function(it) { return it.file.qty >= min && it.file.qty <= max; });
     el.classList.toggle('active', active);
+    // Update savings amount for this tier
+    var tierSave = items.reduce(function(s, it) { return s + it.base * (pct / 100) * min; }, 0);
+    var saveEl = el.querySelector('.mq-tier-save');
+    if (saveEl) saveEl.textContent = 'save ~$' + tierSave.toFixed(0) + ' at ' + min;
   });
-  // Show "You're saving $X" when any discount applies
+  // Update "You're saving $X" row
   var savings = +(items.reduce(function(s, it) { return s + (it.base - it.unit) * it.qty; }, 0)).toFixed(2);
   var row = document.getElementById('mq-savings-row');
   var el  = document.getElementById('mq-savings');

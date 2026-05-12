@@ -101,6 +101,7 @@
 .mq-discount-bar-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#666;white-space:nowrap;margin-right:2px}
 .mq-discount-tier{font-size:12px;font-weight:700;color:#555;padding:3px 10px;border-radius:99px;border:1px solid rgba(86,5,145,.3);white-space:nowrap;transition:color .15s,border-color .15s,background .15s}
 .mq-discount-tier.active{color:#54f2e5;border-color:rgba(84,242,229,.45);background:rgba(84,242,229,.1)}
+.mq-tier-save{display:block;font-size:11px;font-style:normal;opacity:.75;margin-top:3px;font-weight:400;letter-spacing:.02em}
 .mq-grand-row{display:flex;justify-content:space-between;align-items:baseline;padding-top:18px;margin-top:12px;border-top:1px solid rgba(84,242,229,.3);font-weight:800;font-size:22px;color:#fff;margin-bottom:8px}
 .mq-grand-row span:last-child{color:#54f2e5}
 .mq-savings-row{text-align:right;font-size:13px;color:#54f2e5;margin-bottom:20px;opacity:.9}
