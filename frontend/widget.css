@@ -6,7 +6,8 @@
 .mq-steps{display:flex;background:#100020;border-bottom:1px solid rgba(86,5,145,.5);overflow:hidden}
 .mq-step{flex:1;padding:26px 12px;text-align:center;font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#666;border-bottom:3px solid transparent;transition:color .2s,border-color .2s}
 .mq-step.active{color:#54f2e5;border-bottom-color:#54f2e5}
-.mq-step.done{color:#9040d0;border-bottom-color:#9040d0}
+.mq-step.done{color:#9040d0;border-bottom-color:#9040d0;cursor:pointer}
+.mq-step.done:hover{color:#b060f0;border-bottom-color:#b060f0}
 .mq-body{padding:36px 48px 48px}
 .mq-heading{font-size:20px;font-weight:800;color:#fff;margin-bottom:22px;letter-spacing:.02em}
 .mq-drop{border:2.5px dashed rgba(86,5,145,.7);border-radius:14px;padding:60px 36px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s,box-shadow .2s;background:rgba(86,5,145,.05);position:relative}

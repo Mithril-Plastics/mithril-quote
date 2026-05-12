@@ -578,6 +578,17 @@ document.getElementById('mq-continue').addEventListener('click', function() {
 // ── PROCESS ──────────────────────────────────────────────────────────────────
 document.getElementById('mq-back-proc').addEventListener('click', function() { show('upload'); });
 
+// ── STEP TAB CLICK NAVIGATION (back to any completed step) ───────────────────
+document.querySelectorAll('#mq .mq-step').forEach(function(el) {
+  el.addEventListener('click', function() {
+    if (!el.classList.contains('done')) return;
+    var step = parseInt(el.id.replace('mq-s', ''), 10);
+    if      (step === 1)              { show('upload'); }
+    else if (step === 2 && S.files.length) { renderProcess(); show('process'); }
+    else if (step === 3 && S.process) { renderMaterials(); show('material'); }
+  });
+});
+
 function renderProcess() {
   var anyFDM = S.files.some(function(f) { return f.fdmFits; });
   var anySLA = S.files.some(function(f) { return f.slaFits; });
