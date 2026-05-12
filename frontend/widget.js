@@ -584,30 +584,38 @@ document.getElementById('mq-delete-sel').addEventListener('click', function() {
 // ── CONTINUE BUTTON ───────────────────────────────────────────────────────────
 document.getElementById('mq-continue').addEventListener('click', function() {
   if (!S.files.length) return;
+  // Reset decline state each time the compliance screen is opened
+  document.getElementById('mq-itar-contact').style.display = 'none';
+  document.getElementById('mq-itar-decline').style.display = '';
+  show('itar');
+});
+
+// ── ITAR COMPLIANCE SCREEN ────────────────────────────────────────────────────
+document.getElementById('mq-back-itar').addEventListener('click', function() { show('upload'); });
+
+document.getElementById('mq-itar-decline').addEventListener('click', function() {
+  document.getElementById('mq-itar-contact').style.display = '';
+  document.getElementById('mq-itar-decline').style.display = 'none';
+});
+
+document.getElementById('mq-itar-confirm').addEventListener('click', function() {
+  S.process = null; S.material = null; S.materialLabel = '';
   var anyFDM = S.files.some(function(f) { return f.fdmFits; });
   var anySLA = S.files.some(function(f) { return f.slaFits; });
 
-  // Auto-select process if only one option fits all uploaded files
+  // Auto-select process only when just one fits
   if (anyFDM && !anySLA) { S.process = 'FDM'; saveSession(); }
   else if (anySLA && !anyFDM) { S.process = 'SLA'; saveSession(); }
 
   if (S.process) {
-    // Validate saved process still fits the current files
-    var fits = S.files.some(function(f) { return S.process === 'FDM' ? f.fdmFits : f.slaFits; });
-    if (!fits) { S.process = null; S.material = null; S.materialLabel = ''; clearSession(); }
-  }
-
-  if (S.process) {
-    // Process known — show material screen (pre-select if previously chosen)
     renderMaterials(); show('material');
   } else {
-    // Let user pick process
     renderProcess(); show('process');
   }
 });
 
 // ── PROCESS ──────────────────────────────────────────────────────────────────
-document.getElementById('mq-back-proc').addEventListener('click', function() { show('upload'); });
+document.getElementById('mq-back-proc').addEventListener('click', function() { show('itar'); });
 
 // ── STEP TAB CLICK NAVIGATION (back to any completed step) ───────────────────
 document.querySelectorAll('#mq .mq-step').forEach(function(el) {
