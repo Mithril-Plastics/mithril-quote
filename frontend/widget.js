@@ -742,38 +742,13 @@ function renderQuote() {
     /* ── Form body — hidden as a unit on success ── */
     '<div id="mq-form-body">' +
 
-      /* ── Contact details — collected before shipping so form is always reachable ── */
+      /* ── Contact details ── */
       '<div class="mq-contact-section">' +
-        '<p class="mq-contact-heading">Your details</p>' +
+        '<p class="mq-contact-heading">Where should we send your quote?</p>' +
         '<input class="mq-inp" id="mq-c-name"    type="text"  placeholder="Full name *"        autocomplete="name">' +
-        '<input class="mq-inp" id="mq-c-company" type="text"  placeholder="Company (optional)" autocomplete="organization">' +
         '<input class="mq-inp" id="mq-c-email"   type="email" placeholder="Email address *"    autocomplete="email">' +
-        '<input class="mq-inp" id="mq-c-phone"   type="tel"   placeholder="Phone number (optional)" autocomplete="tel">' +
-        '<p class="mq-contact-heading" style="margin-top:8px">Add a note</p>' +
-        '<textarea class="mq-inp mq-note" id="mq-c-note" placeholder="Are there any details we should know about, such as print orientation or how the prints will be used?"></textarea>' +
-      '</div>' +
-
-      /* ── Shipping address + tier selection ── */
-      '<div class="mq-shipping-section">' +
-        '<p class="mq-contact-heading">Shipping address <span class="mq-optional-tag">(optional)</span></p>' +
-        '<input class="mq-inp" id="mq-addr-street" type="text" placeholder="Street address" autocomplete="street-address">' +
-        '<div class="mq-addr-row">' +
-          '<input class="mq-inp" id="mq-addr-zip"   type="text" placeholder="ZIP code"  maxlength="10" autocomplete="postal-code">' +
-          '<input class="mq-inp" id="mq-addr-city"  type="text" placeholder="City"                     autocomplete="address-level2">' +
-          stateSelectHTML('mq-addr-state') +
-        '</div>' +
-        '<div id="mq-zip-err" style="display:none"></div>' +
-        '<div id="mq-ship-opts" style="display:none"></div>' +
-      '</div>' +
-
-      /* ── Order breakdown (parts + shipping + tax) — shown only after a tier is selected ── */
-      '<div id="mq-order-total-row" style="display:none">' +
-        '<div class="mq-order-breakdown">' +
-          '<div class="mq-order-breakdown-line"><span>Parts Subtotal</span><span id="mq-breakdown-parts">$0.00</span></div>' +
-          '<div class="mq-order-breakdown-line"><span id="mq-breakdown-ship-label">Shipping</span><span id="mq-breakdown-ship">$0.00</span></div>' +
-          '<div class="mq-order-breakdown-line"><span>CA Sales Tax (7.75%)</span><span id="mq-breakdown-tax">$0.00</span></div>' +
-          '<div class="mq-order-breakdown-total"><span>Order Total</span><strong id="mq-order-total-val">$0.00</strong></div>' +
-        '</div>' +
+        '<input class="mq-inp" id="mq-c-company" type="text"  placeholder="Company (optional)" autocomplete="organization">' +
+        '<textarea class="mq-inp mq-note" id="mq-c-note" placeholder="Any details we should know? (print orientation, intended use, finish requirements…)"></textarea>' +
       '</div>' +
 
     '</div>' + /* /mq-form-body */
@@ -802,52 +777,16 @@ function renderQuote() {
     }
   });
 
-  // ── Shipping address inputs ───────────────────────────────────────────────────
-  document.getElementById('mq-addr-zip').addEventListener('input', function() {
-    var zip    = this.value.replace(/\D/g, '');
-    var errEl  = document.getElementById('mq-zip-err');
-    var optsEl = document.getElementById('mq-ship-opts');
-    S.address.zip = zip;
-    if (zip.length < 5) {
-      // Still typing — stay silent
-      errEl.style.display  = 'none';
-      optsEl.style.display = 'none';
-      S.shipping = null;
-      updateOrderTotal();
-    } else if (ZIP2_ZONE[zip.substring(0, 2)]) {
-      // Valid ZIP — show shipping options
-      errEl.style.display = 'none';
-      renderShipOpts(eligible, zip);
-    } else {
-      // Unrecognised ZIP — show inline warning
-      optsEl.style.display = 'none';
-      errEl.className      = 'mq-zip-err';
-      errEl.textContent    = '⚠ We couldn\'t find rates for ZIP ' + zip + '. Please check and try again.';
-      errEl.style.display  = '';
-      S.shipping = null;
-      updateOrderTotal();
-    }
-  });
-  ['mq-addr-street', 'mq-addr-city'].forEach(function(id) {
-    document.getElementById(id).addEventListener('input', function() {
-      S.address[id.replace('mq-addr-', '')] = this.value.trim();
-    });
-  });
-  document.getElementById('mq-addr-state').addEventListener('change', function() {
-    S.address.state = this.value;
-  });
 
   // ── Quote form submission ─────────────────────────────────────────────────────
   document.getElementById('mq-req-btn').addEventListener('click', function() {
     var nameEl    = document.getElementById('mq-c-name');
     var emailEl   = document.getElementById('mq-c-email');
     var companyEl = document.getElementById('mq-c-company');
-    var phoneEl   = document.getElementById('mq-c-phone');
     var errEl     = document.getElementById('mq-submit-err');
     var name    = nameEl.value.trim();
     var email   = emailEl.value.trim();
     var company = companyEl.value.trim();
-    var phone   = phoneEl ? phoneEl.value.trim() : '';
     var note    = document.getElementById('mq-c-note').value.trim();
 
     nameEl.classList.remove('error'); emailEl.classList.remove('error');
@@ -863,27 +802,14 @@ function renderQuote() {
     var fd = new FormData();
     fd.append('name',        name);
     fd.append('email',       email);
-    fd.append('_replyto',    email); // triggers Formspree auto-response to customer
+    fd.append('_replyto',    email);
     if (company) fd.append('company', company);
-    if (phone)   fd.append('phone',   phone);
     fd.append('process',     S.process);
     fd.append('material',    S.materialLabel);
     fd.append('quote',       filesSummary());
     fd.append('parts_total', '$' + grandTotal().toFixed(2));
     fd.append('lead_time',   'Est. ' + maxLead() + ' business days');
     if (note) fd.append('note', note);
-    // Shipping & address
-    if (S.address.street) fd.append('ship_street', S.address.street);
-    if (S.address.city)   fd.append('ship_city',   S.address.city);
-    if (S.address.state)  fd.append('ship_state',  S.address.state);
-    if (S.address.zip)    fd.append('ship_zip',     S.address.zip);
-    if (S.shipping) {
-      var taxAmt = +(grandTotal() * TAX_RATE).toFixed(2);
-      fd.append('shipping_method', S.shipping.method);
-      fd.append('shipping_cost',   '$' + S.shipping.cost.toFixed(2));
-      fd.append('tax_amount',      '$' + taxAmt.toFixed(2));
-      fd.append('order_total',     '$' + (grandTotal() + S.shipping.cost + taxAmt).toFixed(2));
-    }
     eligible.forEach(function(f) { if (f.originalFile) fd.append('attachment', f.originalFile, f.fileName); });
 
     fetch(FORMSPREE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
