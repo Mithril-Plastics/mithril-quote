@@ -144,10 +144,31 @@ const S = {
   materialLabel: '',
   quote: null,
   globalQty: 1,
-  shipping: null,   // { method, cost } — set when user selects a shipping tier
-  address: {},      // { street, city, state, zip }
   quoteItems: null, // live reference to renderQuote's items array for order total updates
 };
+
+// ── SESSION PERSISTENCE ───────────────────────────────────────────────────────
+function saveSession() {
+  try {
+    sessionStorage.setItem('mq_process',       S.process       || '');
+    sessionStorage.setItem('mq_material',      S.material      || '');
+    sessionStorage.setItem('mq_materialLabel', S.materialLabel || '');
+  } catch(e) {}
+}
+function clearSession() {
+  try { sessionStorage.removeItem('mq_process'); sessionStorage.removeItem('mq_material'); sessionStorage.removeItem('mq_materialLabel'); } catch(e) {}
+}
+// Restore process + material from a previous session
+(function restoreSession() {
+  try {
+    var p  = sessionStorage.getItem('mq_process');
+    var m  = sessionStorage.getItem('mq_material');
+    var ml = sessionStorage.getItem('mq_materialLabel');
+    if (p)      S.process       = p;
+    if (m)      S.material      = m;
+    if (ml)     S.materialLabel = ml;
+  } catch(e) {}
+})();
 
 // ── SCREENS ──────────────────────────────────────────────────────────────────
 const STEP_MAP = { upload: 1, process: 2, material: 3, quote: 4, loading: null };
@@ -571,8 +592,29 @@ document.getElementById('mq-delete-sel').addEventListener('click', function() {
 // ── CONTINUE BUTTON ───────────────────────────────────────────────────────────
 document.getElementById('mq-continue').addEventListener('click', function() {
   if (!S.files.length) return;
-  renderProcess();
-  show('process');
+  var anyFDM = S.files.some(function(f) { return f.fdmFits; });
+  var anySLA = S.files.some(function(f) { return f.slaFits; });
+
+  // Auto-select process if only one option fits all uploaded files
+  if (anyFDM && !anySLA) { S.process = 'FDM'; saveSession(); }
+  else if (anySLA && !anyFDM) { S.process = 'SLA'; saveSession(); }
+
+  if (S.process) {
+    // Validate saved process still fits the current files
+    var fits = S.files.some(function(f) { return S.process === 'FDM' ? f.fdmFits : f.slaFits; });
+    if (!fits) { S.process = null; S.material = null; S.materialLabel = ''; clearSession(); }
+  }
+
+  if (S.process && S.material) {
+    // Both saved — jump straight to quote
+    buildQuote();
+  } else if (S.process) {
+    // Process known — skip to material
+    renderMaterials(); show('material');
+  } else {
+    // Let user pick process
+    renderProcess(); show('process');
+  }
 });
 
 // ── PROCESS ──────────────────────────────────────────────────────────────────
@@ -608,7 +650,7 @@ function renderProcess() {
 
   ['mq-fdm', 'mq-sla'].forEach(function(id) {
     var btn = document.getElementById(id);
-    btn.onclick = function() { S.process = btn.dataset.p; renderMaterials(); show('material'); };
+    btn.onclick = function() { S.process = btn.dataset.p; saveSession(); renderMaterials(); show('material'); };
   });
 }
 
@@ -653,7 +695,7 @@ function renderMaterials() {
           costBadge(mat.cost) +
         '</span>' +
         (mat.desc ? '<small>' + mat.desc + '</small>' : '');
-      btn.onclick = function() { S.material = mat.key; S.materialLabel = mat.label; buildQuote(); };
+      btn.onclick = function() { S.material = mat.key; S.materialLabel = mat.label; saveSession(); buildQuote(); };
       grid.appendChild(btn);
     });
 
@@ -816,6 +858,7 @@ function renderQuote() {
       .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
       .then(function(r) {
         if (r.ok) {
+          clearSession();
           var succEl = document.getElementById('mq-success');
           document.getElementById('mq-form-body').style.display = 'none';
           document.getElementById('mq-req-btn').style.display   = 'none';
