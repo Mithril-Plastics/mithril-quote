@@ -94,6 +94,7 @@
 .mq-fl:last-child{border-bottom:none}
 .mq-fl-name{font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mq-fl-sub{font-size:13px;color:#a8a8a8;margin-top:3px}
+.mq-fl-filesave{font-size:12px;color:#54f2e5;margin-top:4px;font-weight:600;min-height:1em}
 .mq-fl-vol{font-size:14px;color:#ccc;text-align:right;white-space:nowrap}
 .mq-fl-qty{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
 .mq-fl-price{font-size:15px;font-weight:800;color:#54f2e5;text-align:right;white-space:nowrap}

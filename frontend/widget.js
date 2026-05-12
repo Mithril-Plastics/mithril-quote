@@ -755,8 +755,12 @@ function renderQuote() {
     '<span id="mq-lead">Est. ' + maxLead() + ' business days</span></div>' +
     '<div class="mq-fl-header"><span>File</span><span>Unit price</span><span>Qty</span><span>Total</span></div>' +
     '<div id="mq-lines">' + items.map(function(it, i) {
+      var fileSave = it.pct > 0 ? +((it.base - it.unit) * it.file.qty).toFixed(2) : 0;
       return '<div class="mq-fl" data-idx="' + i + '">' +
-        '<div><div class="mq-fl-name">' + it.file.fileName + '</div><div class="mq-fl-sub">' + it.file.volume + ' cm³</div></div>' +
+        '<div><div class="mq-fl-name">' + it.file.fileName + '</div>' +
+        '<div class="mq-fl-sub">' + it.file.volume + ' cm³</div>' +
+        (it.pct > 0 ? '<div class="mq-fl-filesave">−' + it.pct + '% · saving $' + fileSave.toFixed(2) + '</div>' : '<div class="mq-fl-filesave"></div>') +
+        '</div>' +
         '<div class="mq-fl-vol">$' + it.unit.toFixed(2) + ' / ea</div>' +
         '<div class="mq-fl-qty"><div class="mq-stepper"><button class="mq-dec">−</button>' +
         '<input type="number" min="1" value="' + it.file.qty + '" class="mq-qty-inp">' +
@@ -923,6 +927,15 @@ function renderQuote() {
       if (!badge) { badge = document.createElement('span'); badge.className = 'mq-badge'; row.querySelector('.mq-fl-qty').appendChild(badge); }
       badge.textContent = '−' + pct + '%';
     } else if (badge) { badge.remove(); }
+    var saveEl = row.querySelector('.mq-fl-filesave');
+    if (saveEl) {
+      if (pct > 0) {
+        var fs = +((it.base - unit) * val).toFixed(2);
+        saveEl.textContent = '−' + pct + '% · saving $' + fs.toFixed(2);
+      } else {
+        saveEl.textContent = '';
+      }
+    }
     document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
     document.getElementById('mq-lead').textContent  = 'Est. ' + maxLead() + ' business days';
     renderDiscountBar(items);  // also updates savings row
