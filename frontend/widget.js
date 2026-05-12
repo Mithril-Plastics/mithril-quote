@@ -775,11 +775,11 @@ function renderQuote() {
         QTY_BREAKS.filter(function(t) { return t.pct > 0; }).map(function(t) {
           var range  = t.max ? t.min + '–' + t.max : t.min + '+';
           var active = items.some(function(it) { return it.file.qty >= t.min && (t.max === null || it.file.qty <= t.max); });
-          var tierSave = items.reduce(function(s, it) { return s + it.base * (t.pct / 100) * t.min; }, 0);
+          var tierSave = active ? items.reduce(function(s, it) { return s + (it.base - it.unit) * it.qty; }, 0) : 0;
           return '<span class="mq-discount-tier' + (active ? ' active' : '') + '"' +
             ' data-min="' + t.min + '" data-max="' + (t.max || '') + '" data-pct="' + t.pct + '">' +
             range + ' units · ' + t.pct + '% off' +
-            '<em class="mq-tier-save">save ~$' + tierSave.toFixed(0) + ' at ' + t.min + '</em>' +
+            (active ? '<em class="mq-tier-save">saving $' + tierSave.toFixed(2) + '</em>' : '') +
             '</span>';
         }).join('') +
       '</div>';
@@ -950,10 +950,19 @@ function renderDiscountBar(items) {
     var pct = +el.dataset.pct;
     var active = items.some(function(it) { return it.file.qty >= min && it.file.qty <= max; });
     el.classList.toggle('active', active);
-    // Update savings amount for this tier
-    var tierSave = items.reduce(function(s, it) { return s + it.base * (pct / 100) * min; }, 0);
+    // Show savings only on the active tier
     var saveEl = el.querySelector('.mq-tier-save');
-    if (saveEl) saveEl.textContent = 'save ~$' + tierSave.toFixed(0) + ' at ' + min;
+    if (active) {
+      var tierSave = items.reduce(function(s, it) { return s + (it.base - it.unit) * it.qty; }, 0);
+      if (!saveEl) {
+        saveEl = document.createElement('em');
+        saveEl.className = 'mq-tier-save';
+        el.appendChild(saveEl);
+      }
+      saveEl.textContent = 'saving $' + tierSave.toFixed(2);
+    } else {
+      if (saveEl) saveEl.remove();
+    }
   });
   // Update "You're saving $X" row
   var savings = +(items.reduce(function(s, it) { return s + (it.base - it.unit) * it.qty; }, 0)).toFixed(2);
