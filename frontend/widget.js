@@ -606,11 +606,8 @@ document.getElementById('mq-continue').addEventListener('click', function() {
     if (!fits) { S.process = null; S.material = null; S.materialLabel = ''; clearSession(); }
   }
 
-  if (S.process && S.material) {
-    // Both saved — jump straight to quote
-    buildQuote();
-  } else if (S.process) {
-    // Process known — skip to material
+  if (S.process) {
+    // Process known — show material screen (pre-select if previously chosen)
     renderMaterials(); show('material');
   } else {
     // Let user pick process
@@ -696,6 +693,7 @@ function renderMaterials() {
           costBadge(mat.cost) +
         '</span>' +
         (mat.desc ? '<small>' + mat.desc + '</small>' : '');
+      if (S.material && mat.key === S.material) { btn.classList.add('selected'); }
       btn.onclick = function() { S.material = mat.key; S.materialLabel = mat.label; saveSession(); buildQuote(); };
       grid.appendChild(btn);
     });

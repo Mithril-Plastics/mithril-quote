@@ -76,6 +76,7 @@
 .mq-grid-4{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .mq-opt{padding:18px 18px 16px;border:1px solid rgba(86,5,145,.45);border-radius:11px;background:rgba(86,5,145,.08);cursor:pointer;font-size:16px;font-weight:700;color:#f0f0f0;text-align:left;line-height:1.3;transition:border-color .15s,background .15s,color .15s,box-shadow .15s;font-family:'Khula',sans-serif}
 .mq-opt:hover:not(:disabled){border-color:#54f2e5;color:#54f2e5;background:rgba(84,242,229,.07);box-shadow:0 0 16px rgba(84,242,229,.12)}
+.mq-opt.selected{border-color:#54f2e5;color:#54f2e5;background:rgba(84,242,229,.12);box-shadow:0 0 20px rgba(84,242,229,.18)}
 .mq-opt:disabled{opacity:.25;cursor:not-allowed}
 .mq-opt small{display:block;font-size:13px;font-weight:400;color:#b8b8b8;margin-top:7px;line-height:1.5}
 .mq-mat-group-label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#666;margin:24px 0 10px;padding-bottom:8px;border-bottom:1px solid rgba(86,5,145,.3)}
