@@ -119,6 +119,16 @@ const SHIP_RATES = {
   },
 };
 
+// ── HTML ESCAPING ─────────────────────────────────────────────────────────────
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── STATE ────────────────────────────────────────────────────────────────────
 const S = {
   files: [],     // { fileName, bbox, volume, fdmFits, slaFits, qty, selected, thumbnail, geometry, originalFile }
@@ -234,7 +244,7 @@ function renderCards() {
   var grid = document.getElementById('mq-cards-grid');
   grid.innerHTML = S.files.map(function(f, i) {
     var thumbHtml = f.thumbnail
-      ? '<img src="' + f.thumbnail + '" alt="' + f.fileName + '">'
+      ? '<img src="' + f.thumbnail + '" alt="' + esc(f.fileName) + '">'
       : '<span class="mq-card-thumb-placeholder">📐</span>';
     var volMm3 = Math.round(f.volume * 1000).toLocaleString();
     return (
@@ -246,7 +256,7 @@ function renderCards() {
             '<input type="checkbox"' + (f.selected ? ' checked' : '') + ' data-toggle="' + i + '">' +
             '<span class="mq-toggle-slider"></span>' +
           '</label>' +
-          '<div class="mq-card-name" title="' + f.fileName + '">' + f.fileName + '</div>' +
+          '<div class="mq-card-name" title="' + esc(f.fileName) + '">' + esc(f.fileName) + '</div>' +
           '<button class="mq-card-del" data-del="' + i + '" title="Remove">🗑</button>' +
         '</div>' +
 
@@ -347,7 +357,7 @@ function drainThumbQueue() {
     if (idx !== -1 && cards[idx]) {
       var thumb = cards[idx].querySelector('.mq-card-thumb');
       if (thumb && f.thumbnail) {
-        thumb.innerHTML = '<img src="' + f.thumbnail + '" alt="' + f.fileName + '">';
+        thumb.innerHTML = '<img src="' + f.thumbnail + '" alt="' + esc(f.fileName) + '">';
       }
     }
     drainThumbQueue();
@@ -509,8 +519,8 @@ function handleFiles(fileList) {
     ok.forEach(function(f) { enqueueThumbnail(f); });
 
     var msgs = [];
-    if (failed.length)      msgs.push('Could not load: ' + failed.join(', '));
-    if (unsupported.length) msgs.push('Unsupported: ' + unsupported.map(function(f) { return f.name; }).join(', '));
+    if (failed.length)      msgs.push('Could not load: ' + failed.map(esc).join(', '));
+    if (unsupported.length) msgs.push('Unsupported: ' + unsupported.map(function(f) { return esc(f.name); }).join(', '));
     if (errEl2) errEl2.innerHTML = msgs.length ? '<div class="mq-err">' + msgs.join('<br>') + '</div>' : '';
   });
 }
@@ -617,8 +627,8 @@ function renderProcess() {
   document.getElementById('mq-sla').disabled = !anySLA;
 
   var warns = [];
-  var fdmSkip = S.files.filter(function(f) { return !f.fdmFits; }).map(function(f) { return f.fileName; });
-  var slaSkip = S.files.filter(function(f) { return !f.slaFits; }).map(function(f) { return f.fileName; });
+  var fdmSkip = S.files.filter(function(f) { return !f.fdmFits; }).map(function(f) { return esc(f.fileName); });
+  var slaSkip = S.files.filter(function(f) { return !f.slaFits; }).map(function(f) { return esc(f.fileName); });
   if (fdmSkip.length && anyFDM) warns.push('FDM: ' + fdmSkip.join(', ') + ' exceed build volume and will be skipped.');
   if (slaSkip.length && anySLA) warns.push('SLA: ' + slaSkip.join(', ') + ' exceed build volume and will be skipped.');
   if (!anyFDM) warns.push('No files fit the FDM build volume (254 × 254 × 254 mm).');
@@ -737,7 +747,7 @@ function renderQuote() {
     '<div id="mq-lines">' + items.map(function(it, i) {
       var fileSave = it.pct > 0 ? +((it.base - it.unit) * it.file.qty).toFixed(2) : 0;
       return '<div class="mq-fl" data-idx="' + i + '">' +
-        '<div><div class="mq-fl-name">' + it.file.fileName + '</div>' +
+        '<div><div class="mq-fl-name">' + esc(it.file.fileName) + '</div>' +
         '<div class="mq-fl-sub">' + it.file.volume + ' cm³</div>' +
         (it.pct > 0 ? '<div class="mq-fl-filesave">−' + it.pct + '% · saving $' + fileSave.toFixed(2) + '</div>' : '<div class="mq-fl-filesave"></div>') +
         '</div>' +
@@ -894,7 +904,7 @@ function renderQuote() {
               '<div class="mq-success-fl-head"><span>File</span><span>Qty</span><span>Unit</span><span>Total</span></div>' +
               items.map(function(it) {
                 return '<div class="mq-success-fl-row">' +
-                  '<span class="mq-success-fname">' + it.file.fileName + '</span>' +
+                  '<span class="mq-success-fname">' + esc(it.file.fileName) + '</span>' +
                   '<span>' + it.file.qty + '</span>' +
                   '<span>$' + it.unit.toFixed(2) + '</span>' +
                   '<span>$' + it.lineTotal.toFixed(2) + (it.pct > 0 ? '<em> −' + it.pct + '%</em>' : '') + '</span>' +
@@ -912,7 +922,7 @@ function renderQuote() {
           // Formspree auto-reply handles the customer confirmation email.
         } else {
           btn.disabled = false; btn.textContent = 'Request My Quote →';
-          errEl.innerHTML = '<p class="mq-submit-err">' + (r.data.error || 'Submission failed — please try again.') + '</p>';
+          errEl.innerHTML = '<p class="mq-submit-err">' + esc(r.data.error || 'Submission failed — please try again.') + '</p>';
         }
       })
       .catch(function() {
