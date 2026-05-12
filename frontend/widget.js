@@ -5,25 +5,7 @@ const API_BASE      = _cfg.API_BASE      || 'https://YOUR-BACKEND.railway.app';
 const MOCK_MODE     = _cfg.MOCK_MODE     !== undefined ? _cfg.MOCK_MODE : true;
 const FORMSPREE_URL = _cfg.FORMSPREE_URL || 'https://formspree.io/f/mojrlbvn';
 
-const EMAILJS_PUBLIC_KEY  = _cfg.EMAILJS_PUBLIC_KEY  || 'Vrpr3_PL5K3WW5y_i';
-const EMAILJS_SERVICE_ID  = _cfg.EMAILJS_SERVICE_ID  || 'service_4hxocin';
-const EMAILJS_TEMPLATE_ID = _cfg.EMAILJS_TEMPLATE_ID || 'template_9oyivqc';
-// Initialise EmailJS — load SDK dynamically if not already present
-(function initEmailJS() {
-  function doInit() {
-    if (window.emailjs && EMAILJS_PUBLIC_KEY) {
-      emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-    }
-  }
-  if (window.emailjs) {
-    doInit();
-  } else if (EMAILJS_PUBLIC_KEY) {
-    var s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
-    s.onload = doInit;
-    document.head.appendChild(s);
-  }
-})();
+// Customer confirmation emails are handled by Formspree's auto-reply feature.
 
 const BUILD_VOL = {
   FDM: { x: 254, y: 254, z: 254 },
@@ -850,7 +832,6 @@ function renderQuote() {
     var fd = new FormData();
     fd.append('name',        name);
     fd.append('email',       email);
-    fd.append('_replyto',    email);
     if (company) fd.append('company', company);
     fd.append('process',     S.process);
     fd.append('material',    S.materialLabel);
@@ -879,26 +860,7 @@ function renderQuote() {
             '<p class="mq-success-email">A confirmation has been sent to <strong>' + email + '</strong></p>';
           succEl.style.display = 'block';
 
-          // Send customer confirmation email via EmailJS
-          // Wrapped in try/catch so a synchronous EmailJS error never
-          // propagates to the outer .catch() and triggers the error banner.
-          try {
-            if (window.emailjs && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID) {
-              emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-                to_name:     name,
-                name:        name,
-                to_email:    email,
-                company:     company || '',
-                phone:       phone   || '',
-                process:     S.process,
-                material:    S.materialLabel,
-                quote_lines: filesSummary(),
-                parts_total: '$' + grandTotal().toFixed(2),
-                lead_time:   'Est. ' + maxLead() + ' business days',
-                note:        note   || '',
-              }).catch(function() {});
-            }
-          } catch(e) {}
+          // Formspree auto-reply handles the customer confirmation email.
         } else {
           btn.disabled = false; btn.textContent = 'Request My Quote →';
           errEl.innerHTML = '<p class="mq-submit-err">' + (r.data.error || 'Submission failed — please try again.') + '</p>';
