@@ -980,8 +980,26 @@ window.mqDownloadPDF = function() {
   var btn = document.getElementById('mq-dl-btn');
   if (btn) { btn.textContent = 'Generating…'; btn.disabled = true; }
 
-  function generate() {
-    if (!window.jspdf || !window.jspdf.jsPDF) { setTimeout(generate, 80); return; }
+  // Step 1: ensure jsPDF is loaded, then fetch logo, then build PDF
+  function start() {
+    if (!window.jspdf || !window.jspdf.jsPDF) { setTimeout(start, 80); return; }
+    // Step 2: load logo via canvas so jsPDF can embed it
+    var logoImg = new Image();
+    logoImg.crossOrigin = 'Anonymous';
+    logoImg.onload = function() {
+      try {
+        var cv = document.createElement('canvas');
+        cv.width  = logoImg.naturalWidth;
+        cv.height = logoImg.naturalHeight;
+        cv.getContext('2d').drawImage(logoImg, 0, 0);
+        buildPDF(cv.toDataURL('image/png'), logoImg.naturalWidth, logoImg.naturalHeight);
+      } catch(e) { buildPDF(null, 0, 0); }
+    };
+    logoImg.onerror = function() { buildPDF(null, 0, 0); };
+    logoImg.src = 'https://cdn.prod.website-files.com/68dc75f5161ad85e0cd30bd2/69fe4fbbd1c90020242cf636_logo.gif';
+  }
+
+  function buildPDF(logoData, logoNatW, logoNatH) {
     var d = window.mqPDFData;
     if (!d) return;
 
@@ -989,24 +1007,38 @@ window.mqDownloadPDF = function() {
     var pageW  = 210;
     var margin = 18;
     var cW     = pageW - margin * 2;   // 174 mm usable width
+    var headerH = 42;
     var y      = 0;
 
     // ── Header band ────────────────────────────────────────────────────────
     doc.setFillColor(86, 5, 145);
-    doc.rect(0, 0, pageW, 38, 'F');
+    doc.rect(0, 0, pageW, headerH, 'F');
+
+    // Logo — right-aligned in header, max 32 mm wide, max 28 mm tall
+    if (logoData && logoNatW && logoNatH) {
+      var maxLogoW = 46;
+      var maxLogoH = 28;
+      var aspect   = logoNatW / logoNatH;
+      var logoH    = Math.min(maxLogoH, maxLogoW / aspect);
+      var logoW    = logoH * aspect;
+      if (logoW > maxLogoW) { logoW = maxLogoW; logoH = logoW / aspect; }
+      var logoX = pageW - margin - logoW;
+      var logoY = (headerH - logoH) / 2;
+      doc.addImage(logoData, 'PNG', logoX, logoY, logoW, logoH);
+    }
+
+    // Header text — left side
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.text('MITHRIL PLASTICS', margin, 16);
-    doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text('Instant Quote Summary', margin, 24);
+    doc.text('Instant Quote Summary', margin, 18);
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
-    doc.text('Ref: ' + d.ref, margin, 31);
-    doc.text(new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }), pageW - margin, 31, { align: 'right' });
+    doc.text('Ref: ' + d.ref, margin, 26);
+    doc.text(new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }), margin, 33);
 
     // ── Customer block ─────────────────────────────────────────────────────
-    y = 48;
+    y = headerH + 12;
     doc.setTextColor(120, 120, 120);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
@@ -1051,11 +1083,9 @@ window.mqDownloadPDF = function() {
     y += 14;
 
     // ── File table ─────────────────────────────────────────────────────────
-    // col start positions (mm from left margin)
     var tc = [0, 88, 102, 124, 150];
     var th = 7;
 
-    // Header
     doc.setFillColor(86, 5, 145);
     doc.rect(margin, y, cW, th, 'F');
     doc.setTextColor(255, 255, 255);
@@ -1066,19 +1096,19 @@ window.mqDownloadPDF = function() {
     });
     y += th;
 
-    // Rows
     d.items.forEach(function(it, idx) {
       var rh = 7;
-      doc.setFillColor(idx % 2 === 0 ? 250 : 244, idx % 2 === 0 ? 250 : 244, idx % 2 === 0 ? 250 : 244);
+      var shade = idx % 2 === 0 ? 250 : 244;
+      doc.setFillColor(shade, shade, shade);
       doc.rect(margin, y, cW, rh, 'F');
       doc.setTextColor(30, 30, 30);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       var fname = it.fileName.length > 42 ? it.fileName.slice(0, 39) + '…' : it.fileName;
-      doc.text(fname,           margin + tc[0] + 2, y + 4.8);
-      doc.text(it.volume + '',  margin + tc[1] + 2, y + 4.8);
-      doc.text(it.qty + '',     margin + tc[2] + 2, y + 4.8);
-      doc.text('$' + it.unit,   margin + tc[3] + 2, y + 4.8);
+      doc.text(fname,              margin + tc[0] + 2, y + 4.8);
+      doc.text(it.volume + '',     margin + tc[1] + 2, y + 4.8);
+      doc.text(it.qty + '',        margin + tc[2] + 2, y + 4.8);
+      doc.text('$' + it.unit,      margin + tc[3] + 2, y + 4.8);
       doc.text('$' + it.lineTotal, margin + tc[4] + 2, y + 4.8);
       if (it.pct > 0) {
         doc.setTextColor(34, 160, 90);
@@ -1129,14 +1159,14 @@ window.mqDownloadPDF = function() {
     if (btn) { btn.textContent = '⬇ Download PDF Summary'; btn.disabled = false; }
   }
 
-  // Lazy-load jsPDF on first click
+  // Lazy-load jsPDF on first click, then proceed
   if (!window.jspdf) {
     var s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-    s.onload = generate;
+    s.onload = start;
     document.head.appendChild(s);
   } else {
-    generate();
+    start();
   }
 };
 
