@@ -1007,38 +1007,35 @@ window.mqDownloadPDF = function() {
     var pageW  = 210;
     var margin = 18;
     var cW     = pageW - margin * 2;   // 174 mm usable width
-    var headerH = 42;
     var y      = 0;
 
-    // ── Header band ────────────────────────────────────────────────────────
-    doc.setFillColor(86, 5, 145);
-    doc.rect(0, 0, pageW, headerH, 'F');
-
-    // Logo — right-aligned in header, max 32 mm wide, max 28 mm tall
+    // ── Header — logo only, no background ──────────────────────────────────
+    var logoH = 0;
     if (logoData && logoNatW && logoNatH) {
-      var maxLogoW = 46;
-      var maxLogoH = 28;
+      var maxLogoW = 60;
+      var maxLogoH = 22;
       var aspect   = logoNatW / logoNatH;
-      var logoH    = Math.min(maxLogoH, maxLogoW / aspect);
+      logoH        = Math.min(maxLogoH, maxLogoW / aspect);
       var logoW    = logoH * aspect;
       if (logoW > maxLogoW) { logoW = maxLogoW; logoH = logoW / aspect; }
-      var logoX = pageW - margin - logoW;
-      var logoY = (headerH - logoH) / 2;
-      doc.addImage(logoData, 'PNG', logoX, logoY, logoW, logoH);
+      doc.addImage(logoData, 'PNG', margin, margin, logoW, logoH);
     }
 
-    // Header text — left side
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text('Instant Quote Summary', margin, 18);
+    // Ref + date — right-aligned, vertically centred with logo
+    var refY = margin + Math.max(logoH, 6) / 2;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.text('Ref: ' + d.ref, margin, 26);
-    doc.text(new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }), margin, 33);
+    doc.setFontSize(8);
+    doc.setTextColor(160, 160, 160);
+    doc.text('Ref: ' + d.ref, pageW - margin, refY - 1.5, { align: 'right' });
+    doc.text(new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }), pageW - margin, refY + 4.5, { align: 'right' });
+
+    // Thin rule under header
+    var ruleY = margin + Math.max(logoH, 6) + 6;
+    doc.setDrawColor(220, 220, 220);
+    doc.line(margin, ruleY, pageW - margin, ruleY);
 
     // ── Customer block ─────────────────────────────────────────────────────
-    y = headerH + 12;
+    y = ruleY + 10;
     doc.setTextColor(120, 120, 120);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
