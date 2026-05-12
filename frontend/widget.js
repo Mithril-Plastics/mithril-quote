@@ -159,17 +159,8 @@ function saveSession() {
 function clearSession() {
   try { sessionStorage.removeItem('mq_process'); sessionStorage.removeItem('mq_material'); sessionStorage.removeItem('mq_materialLabel'); } catch(e) {}
 }
-// Restore process + material from a previous session
-(function restoreSession() {
-  try {
-    var p  = sessionStorage.getItem('mq_process');
-    var m  = sessionStorage.getItem('mq_material');
-    var ml = sessionStorage.getItem('mq_materialLabel');
-    if (p)      S.process       = p;
-    if (m)      S.material      = m;
-    if (ml)     S.materialLabel = ml;
-  } catch(e) {}
-})();
+// Process and material are intentionally not restored from session —
+// customers must always select both explicitly.
 
 // ── SCREENS ──────────────────────────────────────────────────────────────────
 const STEP_MAP = { upload: 1, process: 2, material: 3, quote: 4, loading: null };
@@ -693,7 +684,6 @@ function renderMaterials() {
           costBadge(mat.cost) +
         '</span>' +
         (mat.desc ? '<small>' + mat.desc + '</small>' : '');
-      if (S.material && mat.key === S.material) { btn.classList.add('selected'); }
       btn.onclick = function() { S.material = mat.key; S.materialLabel = mat.label; saveSession(); buildQuote(); };
       grid.appendChild(btn);
     });
@@ -781,14 +771,12 @@ function renderQuote() {
           return '<span class="mq-discount-tier' + (active ? ' active' : '') + '"' +
             ' data-min="' + t.min + '" data-max="' + (t.max || '') + '" data-pct="' + t.pct + '">' +
             range + ' units · ' + t.pct + '% off' +
-            (active ? '<em class="mq-tier-save">saving $' + tierSave.toFixed(2) + '</em>' : '') +
             '</span>';
         }).join('') +
       '</div>';
     })() +
 
     '<div class="mq-grand-row"><span>Parts Total</span><span id="mq-grand">$' + grandTotal().toFixed(2) + '</span></div>' +
-    '<div class="mq-savings-row" id="mq-savings-row" style="display:none">🎉 You\'re saving <strong id="mq-savings"></strong> with volume pricing</div>' +
 
     /* ── Form body — hidden as a unit on success ── */
     '<div id="mq-form-body">' +
@@ -961,28 +949,7 @@ function renderDiscountBar(items) {
     var pct = +el.dataset.pct;
     var active = items.some(function(it) { return it.file.qty >= min && it.file.qty <= max; });
     el.classList.toggle('active', active);
-    // Show savings only on the active tier
-    var saveEl = el.querySelector('.mq-tier-save');
-    if (active) {
-      var tierSave = items.reduce(function(s, it) { return s + (it.base - it.unit) * it.qty; }, 0);
-      if (!saveEl) {
-        saveEl = document.createElement('em');
-        saveEl.className = 'mq-tier-save';
-        el.appendChild(saveEl);
-      }
-      saveEl.textContent = 'saving $' + tierSave.toFixed(2);
-    } else {
-      if (saveEl) saveEl.remove();
-    }
   });
-  // Update "You're saving $X" row
-  var savings = +(items.reduce(function(s, it) { return s + (it.base - it.unit) * it.qty; }, 0)).toFixed(2);
-  var row = document.getElementById('mq-savings-row');
-  var el  = document.getElementById('mq-savings');
-  if (row && el) {
-    if (savings > 0) { el.textContent = '$' + savings.toFixed(2); row.style.display = ''; }
-    else             { row.style.display = 'none'; }
-  }
 }
 
 // ── STATE SELECT ─────────────────────────────────────────────────────────────
