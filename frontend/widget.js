@@ -880,21 +880,25 @@ function renderQuote() {
           succEl.style.display = 'block';
 
           // Send customer confirmation email via EmailJS
-          if (window.emailjs && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID) {
-            emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-              to_name:     name,
-              name:        name,
-              to_email:    email,
-              company:     company || '',
-              phone:       phone   || '',
-              process:     S.process,
-              material:    S.materialLabel,
-              quote_lines: filesSummary(),
-              parts_total: '$' + grandTotal().toFixed(2),
-              lead_time:   'Est. ' + maxLead() + ' business days',
-              note:        note   || '',
-            }).catch(function() {});
-          }
+          // Wrapped in try/catch so a synchronous EmailJS error never
+          // propagates to the outer .catch() and triggers the error banner.
+          try {
+            if (window.emailjs && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID) {
+              emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                to_name:     name,
+                name:        name,
+                to_email:    email,
+                company:     company || '',
+                phone:       phone   || '',
+                process:     S.process,
+                material:    S.materialLabel,
+                quote_lines: filesSummary(),
+                parts_total: '$' + grandTotal().toFixed(2),
+                lead_time:   'Est. ' + maxLead() + ' business days',
+                note:        note   || '',
+              }).catch(function() {});
+            }
+          } catch(e) {}
         } else {
           btn.disabled = false; btn.textContent = 'Request My Quote →';
           errEl.innerHTML = '<p class="mq-submit-err">' + (r.data.error || 'Submission failed — please try again.') + '</p>';
