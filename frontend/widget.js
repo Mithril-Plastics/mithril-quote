@@ -57,11 +57,11 @@ const QTY_BREAKS = [
 // Pricing formula applies fillFactor so actual charge scales with infill density:
 //   base = volume × fillFactor × material_rate  +  (volume / cm3PerHr) × machineRatePerHr
 const MOCK_RATES = {
-  FDM: { machineRatePerHr: 3.50, cm3PerHr: 8,
-    mats: { 'PLA':1.04,'ABS':1.15,'PETG':1.26,'TPU':1.75,'Nylon':2.18,'ASA':1.32,'PET':1.15,'PC':2.61,
-            'PLA-CF':3.04,'ABS-CF':3.61,'PETG-CF':3.46,'TPU-CF':4.18,'Nylon-CF':5.18,'ASA-CF':3.89,'Nylon-GF':4.61,'PC-GF':5.04 } },
-  SLA: { machineRatePerHr: 7.50, cm3PerHr: 18,
-    mats: { 'Standard':0.53,'Clear':0.83,'High Temp':1.78,'ABS-Like':0.68,'Flexible':1.08 } },
+  FDM: { machineRatePerHr: 3.00, cm3PerHr: 8,
+    mats: { 'PLA':0.78,'ABS':0.86,'PETG':0.95,'TPU':1.31,'Nylon':1.64,'ASA':0.99,'PET':0.86,'PC':1.96,
+            'PLA-CF':2.28,'ABS-CF':2.71,'PETG-CF':2.60,'TPU-CF':3.14,'Nylon-CF':3.89,'ASA-CF':2.92,'Nylon-GF':3.46,'PC-GF':3.78 } },
+  SLA: { machineRatePerHr: 6.50, cm3PerHr: 18,
+    mats: { 'Standard':0.40,'Clear':0.62,'High Temp':1.34,'ABS-Like':0.51,'Flexible':0.81 } },
 };
 
 // Material densities (g/cm³) and FDM infill factor for weight estimation
