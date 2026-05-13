@@ -105,7 +105,7 @@
     +                 '<span class="mq-drop-icon">📂</span>'
     +                 '<p class="mq-drop-headline">Drag &amp; drop your files here</p>'
     +                 '<p class="mq-drop-sub">or</p>'
-    +                 '<span class="mq-drop-cta" id="mq-browse">Browse files</span>'
+    +                 '<label class="mq-drop-cta" id="mq-browse" for="mq-input">Browse files</label>'
     +                 '<p class="mq-formats">STL · OBJ · PLY · GLB · GLTF</p>'
     +               '</div>'
     +               '<div id="mq-upload-err"></div>'
