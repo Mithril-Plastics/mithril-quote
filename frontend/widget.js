@@ -682,7 +682,7 @@ function renderMaterials() {
   var helpBtn = document.createElement('button');
   helpBtn.className = 'mq-help-decide-btn';
   helpBtn.innerHTML =
-    '<span class="mq-help-decide-title">🤔 Help me decide</span>' +
+    '<span class="mq-help-decide-title">Help me decide</span>' +
     '<span class="mq-help-decide-sub">Not sure which material is right? Tell us about your application and our team will recommend the best option for your needs and budget.</span>';
   helpBtn.onclick = function() {
     S.material      = 'help-me-decide';
