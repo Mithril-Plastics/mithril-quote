@@ -138,8 +138,9 @@
 .mq-success-title{font-size:18px;font-weight:800;color:#54f2e5;margin:0 0 3px}
 .mq-success-ref{font-size:12px;color:#888;margin:0}
 .mq-success-ref strong{color:#aaa}
-.mq-success-sent{font-size:13px;color:#a8a8a8;margin:0 0 20px;line-height:1.5}
+.mq-success-sent{font-size:13px;color:#a8a8a8;margin:0 0 6px;line-height:1.5}
 .mq-success-sent strong{color:#54f2e5}
+.mq-success-email-note{font-size:11px;color:#666;margin:0 0 20px;line-height:1.5}
 .mq-success-summary{background:rgba(86,5,145,.1);border:1px solid rgba(86,5,145,.35);border-radius:10px;overflow:hidden;margin-bottom:18px}
 .mq-success-meta-row{display:flex;gap:0;border-bottom:1px solid rgba(86,5,145,.3)}
 .mq-success-meta-row span{flex:1;padding:12px 14px;border-right:1px solid rgba(86,5,145,.3)}

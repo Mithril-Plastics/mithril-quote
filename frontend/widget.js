@@ -894,6 +894,7 @@ function renderQuote() {
               '</div>' +
             '</div>' +
             '<p class="mq-success-sent">A confirmation has been sent to <strong>' + email + '</strong>. We\'ll follow up within one business day.</p>' +
+            '<p class="mq-success-email-note">Please allow 1–5 minutes for the confirmation email to appear in your inbox.</p>' +
 
             '<div class="mq-success-summary">' +
               '<div class="mq-success-meta-row">' +
