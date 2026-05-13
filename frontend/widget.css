@@ -88,6 +88,12 @@
 .mq-opt.selected{border-color:#54f2e5;color:#54f2e5;background:rgba(84,242,229,.12);box-shadow:0 0 20px rgba(84,242,229,.18)}
 .mq-opt:disabled{opacity:.25;cursor:not-allowed}
 .mq-opt small{display:block;font-size:13px;font-weight:400;color:#b8b8b8;margin-top:7px;line-height:1.5}
+.mq-help-decide-btn{width:100%;text-align:left;background:rgba(84,242,229,.06);border:1.5px dashed rgba(84,242,229,.45);border-radius:12px;padding:14px 18px;margin-bottom:12px;cursor:pointer;font-family:'Khula',sans-serif;transition:background .15s,border-color .15s}
+.mq-help-decide-btn:hover{background:rgba(84,242,229,.12);border-color:rgba(84,242,229,.7)}
+.mq-help-decide-title{font-size:15px;font-weight:800;color:#54f2e5;display:block;margin-bottom:3px}
+.mq-help-decide-sub{font-size:12px;color:#888;line-height:1.45}
+.mq-help-notice{background:rgba(84,242,229,.07);border:1px solid rgba(84,242,229,.3);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#aaa;line-height:1.55}
+.mq-help-notice strong{color:#54f2e5;display:block;margin-bottom:4px;font-size:14px}
 .mq-mat-section{margin-bottom:8px;border:1px solid rgba(86,5,145,.35);border-radius:12px;overflow:hidden;transition:border-color .15s}
 .mq-mat-section.open{border-color:rgba(86,5,145,.65)}
 .mq-mat-section-hdr{width:100%;display:flex;align-items:center;gap:12px;padding:14px 18px;background:rgba(86,5,145,.1);border:none;border-bottom:1px solid transparent;cursor:pointer;font-family:'Khula',sans-serif;transition:background .15s,border-color .15s}
@@ -119,7 +125,7 @@
 .mq-badge{background:rgba(84,242,229,.12);color:#54f2e5;border:1px solid rgba(84,242,229,.35);border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700}
 .mq-discount-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(84,242,229,.04);border:1px solid rgba(84,242,229,.14);border-radius:10px;padding:10px 14px;margin:4px 0 16px}
 .mq-discount-bar-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#aaa;white-space:nowrap;margin-right:2px}
-.mq-discount-tier{font-size:12px;font-weight:700;color:#c9b8e8;padding:3px 10px;border-radius:99px;border:1px solid rgba(149,100,220,.55);white-space:nowrap;transition:color .15s,border-color .15s,background .15s}
+.mq-discount-tier{font-size:12px;font-weight:700;color:#fff;padding:3px 10px;border-radius:99px;border:1px solid rgba(149,100,220,.55);white-space:nowrap;transition:color .15s,border-color .15s,background .15s}
 .mq-discount-tier.active{color:#54f2e5;border-color:rgba(84,242,229,.45);background:rgba(84,242,229,.1)}
 .mq-tier-save{display:block;font-size:11px;font-style:normal;opacity:.75;margin-top:3px;font-weight:400;letter-spacing:.02em}
 .mq-grand-row{display:flex;justify-content:space-between;align-items:baseline;padding-top:18px;margin-top:12px;border-top:1px solid rgba(84,242,229,.3);font-weight:800;font-size:22px;color:#fff;margin-bottom:8px}

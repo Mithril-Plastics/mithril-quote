@@ -678,6 +678,20 @@ function renderMaterials() {
   container.innerHTML = '';
   document.getElementById('mq-mat-err').innerHTML = '';
 
+  // ── "Help me decide" shortcut ───────────────────────────────────────────────
+  var helpBtn = document.createElement('button');
+  helpBtn.className = 'mq-help-decide-btn';
+  helpBtn.innerHTML =
+    '<span class="mq-help-decide-title">🤔 Help me decide</span>' +
+    '<span class="mq-help-decide-sub">Not sure which material is right? Tell us about your application and our team will recommend the best option for your needs and budget.</span>';
+  helpBtn.onclick = function() {
+    S.material      = 'help-me-decide';
+    S.materialLabel = 'Team recommendation';
+    saveSession();
+    buildQuote();
+  };
+  container.appendChild(helpBtn);
+
   // Build ordered group list preserving declaration order
   var groups = [], groupMap = {};
   MATERIALS[S.process].forEach(function(mat) {
@@ -762,8 +776,105 @@ function buildQuote() {
   }
 }
 
+function renderHelpDecideQuote(eligible) {
+  var fileList = eligible.map(function(f) {
+    return '<div class="mq-fl">' +
+      '<div><div class="mq-fl-name">' + esc(f.fileName) + '</div>' +
+      '<div class="mq-fl-sub">' + f.volume + ' cm³ · qty ' + f.qty + '</div></div>' +
+      '<div style="grid-column:2/-1"></div>' +
+    '</div>';
+  }).join('');
+
+  var fileSummary = eligible.map(function(f) {
+    return f.fileName + ' | ' + f.volume + ' cm³ | qty ' + f.qty;
+  }).join('\n');
+
+  document.getElementById('mq-quote-body').innerHTML =
+    '<div class="mq-quote-meta"><strong>' + S.process + ' · Material: Team recommendation</strong></div>' +
+    '<div class="mq-help-notice">' +
+      '<strong>🤔 Our team will pick the right material</strong>' +
+      'Share a bit about your application below and we\'ll recommend the best material for your needs, print settings, and budget — then follow up with a full quote within 1 business day.' +
+    '</div>' +
+    '<div class="mq-fl-header"><span>File</span><span></span><span></span><span></span></div>' +
+    '<div id="mq-lines">' + fileList + '</div>' +
+    '<div id="mq-form-body">' +
+      '<div class="mq-contact-section">' +
+        '<p class="mq-contact-heading">Where should we send your quote?</p>' +
+        '<input class="mq-inp" id="mq-c-name"    type="text"  placeholder="Full name *"        autocomplete="name">' +
+        '<input class="mq-inp" id="mq-c-email"   type="email" placeholder="Email address *"    autocomplete="email">' +
+        '<input class="mq-inp" id="mq-c-company" type="text"  placeholder="Company (optional)" autocomplete="organization">' +
+        '<textarea class="mq-inp mq-note" id="mq-c-note" placeholder="Tell us about your application — intended use, environment, finish requirements, budget constraints…"></textarea>' +
+      '</div>' +
+    '</div>' +
+    '<div class="mq-success" id="mq-success" style="display:none">' +
+      '<div class="mq-success-icon">✅</div>' +
+      '<h3>Request received!</h3>' +
+      '<p>We\'ll review your files and follow up with a material recommendation and quote within 1 business day.</p>' +
+    '</div>' +
+    '<div id="mq-submit-err"></div>' +
+    '<p class="mq-trust-line">🔒 Your files are never shared · Response within 1 business day</p>' +
+    '<button class="mq-cta" id="mq-req-btn">Request Material Recommendation →</button>';
+
+  document.getElementById('mq-req-btn').addEventListener('click', function() {
+    var nameEl  = document.getElementById('mq-c-name');
+    var emailEl = document.getElementById('mq-c-email');
+    var errEl   = document.getElementById('mq-submit-err');
+    var name    = nameEl.value.trim();
+    var email   = emailEl.value.trim();
+    var company = document.getElementById('mq-c-company').value.trim();
+    var note    = document.getElementById('mq-c-note').value.trim();
+
+    nameEl.classList.remove('error'); emailEl.classList.remove('error');
+    errEl.innerHTML = '';
+    if (!name)  { nameEl.classList.add('error'); }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { emailEl.classList.add('error'); }
+    if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errEl.innerHTML = '<p class="mq-submit-err">Please fill in the required fields.</p>'; return;
+    }
+
+    var btn = document.getElementById('mq-req-btn');
+    btn.disabled = true; btn.textContent = 'Submitting…';
+
+    var fd = new FormData();
+    fd.append('name',     name);
+    fd.append('email',    email);
+    if (company) fd.append('company', company);
+    fd.append('process',  S.process);
+    fd.append('material', 'Team recommendation (to be determined)');
+    fd.append('quote',    fileSummary);
+    fd.append('parts_total', 'To be quoted');
+    fd.append('lead_time',   'To be confirmed after material selection');
+    if (note) fd.append('note', note);
+    eligible.forEach(function(f) { if (f.originalFile) fd.append('attachment', f.originalFile, f.fileName); });
+
+    fetch(FORMSPREE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
+      .then(function(res) { return res.json().catch(function() { return {}; }).then(function(d) { return { ok: res.ok, data: d }; }); })
+      .then(function(r) {
+        if (r.ok) {
+          document.getElementById('mq-form-body').style.display = 'none';
+          document.getElementById('mq-req-btn').style.display   = 'none';
+          document.getElementById('mq-success').style.display   = '';
+        } else {
+          btn.disabled = false; btn.textContent = 'Request Material Recommendation →';
+          errEl.innerHTML = '<p class="mq-submit-err">Something went wrong. Please try again.</p>';
+        }
+      })
+      .catch(function() {
+        btn.disabled = false; btn.textContent = 'Request Material Recommendation →';
+        errEl.innerHTML = '<p class="mq-submit-err">Network error. Please try again.</p>';
+      });
+  });
+}
+
 function renderQuote() {
   var eligible = S.quote.eligible;
+
+  // ── "Help me decide" path — no pricing, just file list + contact form ───────
+  if (S.material === 'help-me-decide') {
+    renderHelpDecideQuote(eligible);
+    return;
+  }
+
   var items = eligible.map(function(f) { return Object.assign({ file: f }, calcLine(f)); });
   S.quoteItems = items;
   S.shipping = null; // reset shipping on each quote render
