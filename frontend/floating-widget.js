@@ -9,7 +9,7 @@
   // Skip on the dedicated quote page (widget already inline there)
   if (window.location.pathname === '/instant-quote') return;
 
-  var CDN_WIDGET = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@ebefaad/frontend';
+  var CDN_WIDGET = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@c6c5bff/frontend';
   var CDN_THREE  = 'https://cdn.jsdelivr.net/npm/three@0.128.0';
 
   // ── Widget CSS ──────────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@
 
   // ── Widget JS — loaded AFTER HTML so DOM elements exist when it runs ────────
   var ws = document.createElement('script');
-  ws.src = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@ebefaad/frontend/widget.js';
+  ws.src = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@c6c5bff/frontend/widget.js';
   document.head.appendChild(ws);
 
   // ── Open / close functions ──────────────────────────────────────────────────
