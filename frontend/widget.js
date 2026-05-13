@@ -681,11 +681,23 @@ function renderMaterials() {
     groupMap[g].push(mat);
   });
 
-  groups.forEach(function(groupName) {
-    var label = document.createElement('p');
-    label.className = 'mq-mat-group-label';
-    label.textContent = groupName;
-    container.appendChild(label);
+  var chevron = '<svg class="mq-mat-chevron-svg" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 4.5l5 5 5-5" stroke="#54f2e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  groups.forEach(function(groupName, gi) {
+    var section = document.createElement('div');
+    section.className = 'mq-mat-section' + (gi === 0 ? ' open' : '');
+
+    var hdr = document.createElement('button');
+    hdr.className = 'mq-mat-section-hdr';
+    hdr.innerHTML =
+      '<span class="mq-mat-section-name">' + groupName + '</span>' +
+      '<span class="mq-mat-section-count">' + groupMap[groupName].length + ' material' + (groupMap[groupName].length !== 1 ? 's' : '') + '</span>' +
+      '<span class="mq-mat-section-chevron">' + chevron + '</span>';
+
+    hdr.addEventListener('click', function() { section.classList.toggle('open'); });
+
+    var body = document.createElement('div');
+    body.className = 'mq-mat-section-body';
 
     var grid = document.createElement('div');
     grid.className = 'mq-grid-4';
@@ -703,7 +715,10 @@ function renderMaterials() {
       grid.appendChild(btn);
     });
 
-    container.appendChild(grid);
+    body.appendChild(grid);
+    section.appendChild(hdr);
+    section.appendChild(body);
+    container.appendChild(section);
   });
 }
 
