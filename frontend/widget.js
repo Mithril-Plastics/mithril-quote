@@ -21,7 +21,6 @@ const MATERIALS = {
     { key: 'ASA',      label: 'ASA',               group: 'Standard',    cost: 1, desc: 'UV and weather resistant. Ideal for outdoor and automotive parts.' },
     { key: 'PET',      label: 'PET',               group: 'Standard',    cost: 1, desc: 'Stiff with low moisture absorption. Good for housings and containers.' },
     { key: 'TPU',      label: 'TPU',               group: 'Standard',    cost: 2, desc: 'Flexible and rubber-like. Perfect for gaskets, grips, and wearables.' },
-    { key: 'HIPS',     label: 'HIPS',              group: 'Standard',    cost: 1, desc: 'Lightweight and easy to print. Excellent for display models, signage, and as dissolvable support material alongside ABS.' },
     { key: 'PP',       label: 'Polypropylene (PP)', group: 'Standard',   cost: 2, desc: 'Chemically inert with outstanding fatigue resistance. Ideal for living hinges, snap-fits, and fluid-contact or food-safe parts.' },
     // ── Engineering ───────────────────────────────────────────────────────────
     { key: 'Nylon',    label: 'Nylon (PA12)',      group: 'Engineering', cost: 2, desc: 'Impact-resistant with low friction. Best for gears and load-bearing parts.' },
@@ -68,7 +67,7 @@ const QTY_BREAKS = [
 const MOCK_RATES = {
   FDM: { machineRatePerHr: 3.00, cm3PerHr: 8,
     mats: { 'PLA':0.78,'ABS':0.86,'PETG':0.95,'TPU':1.31,'Nylon':1.64,'ASA':0.99,'PET':0.86,'PC':1.96,
-            'HIPS':0.59,'PP':0.99,'PA6':1.64,'PC-ABS':1.16,
+            'PP':0.99,'PA6':1.64,'PC-ABS':1.16,
             'PLA-CF':2.28,'ABS-CF':2.71,'PETG-CF':2.60,'PET-CF':3.50,'TPU-CF':3.14,'Nylon-CF':3.89,'ASA-CF':2.92,'Nylon-GF':3.46,'PC-CF':4.36,'PC-GF':3.78,
             'PLA-Aero':0.70,'ASA-Aero':0.99 } },
   SLA: { machineRatePerHr: 6.50, cm3PerHr: 18,
@@ -79,7 +78,7 @@ const MOCK_RATES = {
 const DENSITIES = {
   FDM: { fillFactor: 0.35,
     mats: { 'PLA':1.24,'ABS':1.04,'PETG':1.27,'TPU':1.21,'Nylon':1.01,'ASA':1.07,'PET':1.38,'PC':1.20,
-            'HIPS':1.05,'PP':0.91,'PA6':1.13,'PC-ABS':1.10,
+            'PP':0.91,'PA6':1.13,'PC-ABS':1.10,
             'PLA-CF':1.18,'ABS-CF':1.12,'PETG-CF':1.20,'PET-CF':1.30,'TPU-CF':1.18,'Nylon-CF':1.10,'ASA-CF':1.12,'Nylon-GF':1.15,'PC-CF':1.25,'PC-GF':1.32,
             'PLA-Aero':0.65,'ASA-Aero':0.65 } },
   SLA: { fillFactor: 1.0,
