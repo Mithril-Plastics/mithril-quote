@@ -57,13 +57,10 @@
     FORMSPREE_URL: 'https://formspree.io/f/mojrlbvn'
   };
 
-  // ── Widget JS (deferred) ────────────────────────────────────────────────────
-  var ws = document.createElement('script');
-  ws.defer = true;
-  ws.src   = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@ebefaad/frontend/widget.js';
-  document.head.appendChild(ws);
-
   // ── Floating button + Modal HTML ────────────────────────────────────────────
+  // IMPORTANT: HTML must be injected BEFORE widget.js is appended.
+  // Dynamic script tags ignore `defer` and may execute synchronously from
+  // cache, so the DOM elements must already exist when widget.js runs.
   var html = ''
     + '<button id="mq-float-btn" onclick="mqOpenModal()">'
     +   '<span class="mq-float-icon">⚡</span>Get Instant Quote'
@@ -200,6 +197,11 @@
     + '</div>';          // #mq-modal-overlay
 
   document.body.insertAdjacentHTML('beforeend', html);
+
+  // ── Widget JS — loaded AFTER HTML so DOM elements exist when it runs ────────
+  var ws = document.createElement('script');
+  ws.src = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@ebefaad/frontend/widget.js';
+  document.head.appendChild(ws);
 
   // ── Open / close functions ──────────────────────────────────────────────────
   window.mqOpenModal = function () {
