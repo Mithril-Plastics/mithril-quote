@@ -21,18 +21,27 @@ const MATERIALS = {
     { key: 'ASA',      label: 'ASA',               group: 'Standard',    cost: 1, desc: 'UV and weather resistant. Ideal for outdoor and automotive parts.' },
     { key: 'PET',      label: 'PET',               group: 'Standard',    cost: 1, desc: 'Stiff with low moisture absorption. Good for housings and containers.' },
     { key: 'TPU',      label: 'TPU',               group: 'Standard',    cost: 2, desc: 'Flexible and rubber-like. Perfect for gaskets, grips, and wearables.' },
+    { key: 'HIPS',     label: 'HIPS',              group: 'Standard',    cost: 1, desc: 'Lightweight and easy to print. Excellent for display models, signage, and as dissolvable support material alongside ABS.' },
+    { key: 'PP',       label: 'Polypropylene (PP)', group: 'Standard',   cost: 2, desc: 'Chemically inert with outstanding fatigue resistance. Ideal for living hinges, snap-fits, and fluid-contact or food-safe parts.' },
     // ── Engineering ───────────────────────────────────────────────────────────
     { key: 'Nylon',    label: 'Nylon (PA12)',      group: 'Engineering', cost: 2, desc: 'Impact-resistant with low friction. Best for gears and load-bearing parts.' },
+    { key: 'PA6',      label: 'Nylon 6 (PA6)',     group: 'Engineering', cost: 2, desc: 'Higher tensile strength ceiling than PA12. Great for structural brackets, gears, and high-load mechanical parts.' },
     { key: 'PC',       label: 'Polycarbonate',     group: 'Engineering', cost: 2, desc: 'Extremely tough and heat-resistant. For demanding mechanical and electrical parts.' },
+    { key: 'PC-ABS',   label: 'PC/ABS Blend',      group: 'Engineering', cost: 2, desc: 'Combines PC impact strength with ABS ease of printing. Ideal for enclosures, brackets, and functional parts needing toughness.' },
     // ── Composite ─────────────────────────────────────────────────────────────
     { key: 'PLA-CF',   label: 'PLA Carbon Fiber',  group: 'Composite',   cost: 3, desc: 'Lightweight and rigid. Best for stiff structural prototypes and cosmetic parts.' },
     { key: 'PETG-CF',  label: 'PETG Carbon Fiber', group: 'Composite',   cost: 3, desc: 'Rigid and dimensionally stable. For load-bearing assemblies and brackets.' },
+    { key: 'PET-CF',   label: 'PET Carbon Fiber',  group: 'Composite',   cost: 3, desc: 'Stiff with low moisture absorption and excellent dimensional stability. Ideal for precision structural brackets and load-bearing components.' },
     { key: 'ABS-CF',   label: 'ABS Carbon Fiber',  group: 'Composite',   cost: 3, desc: 'High stiffness with excellent surface quality. For high-performance functional parts.' },
     { key: 'ASA-CF',   label: 'ASA Carbon Fiber',  group: 'Composite',   cost: 3, desc: 'Weather resistant with added stiffness. For outdoor structural applications.' },
     { key: 'TPU-CF',   label: 'TPU Carbon Fiber',  group: 'Composite',   cost: 3, desc: 'Semi-flexible with added stiffness. For wear-resistant flexible components.' },
     { key: 'Nylon-CF', label: 'Nylon Carbon Fiber',group: 'Composite',   cost: 4, desc: 'Exceptional strength-to-weight ratio. For aerospace, robotics, and structural brackets.' },
     { key: 'Nylon-GF', label: 'Nylon Glass Fiber', group: 'Composite',   cost: 4, desc: 'High stiffness and dimensional stability. For precision housings and mechanical parts.' },
+    { key: 'PC-CF',    label: 'PC Carbon Fiber',   group: 'Composite',   cost: 4, desc: 'Maximum stiffness and heat resistance in a printed part. For demanding structural and electrical applications where both properties are critical.' },
     { key: 'PC-GF',    label: 'PC Glass Fiber',    group: 'Composite',   cost: 4, desc: 'High strength and heat resistance. For structural enclosures and electrical components.' },
+    // ── Lightweight ───────────────────────────────────────────────────────────
+    { key: 'PLA-Aero', label: 'PLA Aero',          group: 'Lightweight', cost: 1, desc: 'Foaming PLA that produces a lightweight cellular structure. Significantly reduced part weight — ideal for drone frames, RC components, and any mass-sensitive prototype.' },
+    { key: 'ASA-Aero', label: 'ASA Aero',          group: 'Lightweight', cost: 2, desc: 'Foaming ASA combining weather and UV resistance with major weight savings. Great for outdoor UAV components, antenna mounts, and lightweight enclosures.' },
   ],
   SLA: [
     // ── Standard ──────────────────────────────────────────────────────────────
@@ -59,7 +68,9 @@ const QTY_BREAKS = [
 const MOCK_RATES = {
   FDM: { machineRatePerHr: 3.00, cm3PerHr: 8,
     mats: { 'PLA':0.78,'ABS':0.86,'PETG':0.95,'TPU':1.31,'Nylon':1.64,'ASA':0.99,'PET':0.86,'PC':1.96,
-            'PLA-CF':2.28,'ABS-CF':2.71,'PETG-CF':2.60,'TPU-CF':3.14,'Nylon-CF':3.89,'ASA-CF':2.92,'Nylon-GF':3.46,'PC-GF':3.78 } },
+            'HIPS':0.59,'PP':0.99,'PA6':1.64,'PC-ABS':1.16,
+            'PLA-CF':2.28,'ABS-CF':2.71,'PETG-CF':2.60,'PET-CF':3.50,'TPU-CF':3.14,'Nylon-CF':3.89,'ASA-CF':2.92,'Nylon-GF':3.46,'PC-CF':4.36,'PC-GF':3.78,
+            'PLA-Aero':0.70,'ASA-Aero':0.99 } },
   SLA: { machineRatePerHr: 6.50, cm3PerHr: 18,
     mats: { 'Standard':0.40,'Clear':0.62,'High Temp':1.34,'ABS-Like':0.51,'Flexible':0.81 } },
 };
@@ -68,7 +79,9 @@ const MOCK_RATES = {
 const DENSITIES = {
   FDM: { fillFactor: 0.35,
     mats: { 'PLA':1.24,'ABS':1.04,'PETG':1.27,'TPU':1.21,'Nylon':1.01,'ASA':1.07,'PET':1.38,'PC':1.20,
-            'PLA-CF':1.18,'ABS-CF':1.12,'PETG-CF':1.20,'TPU-CF':1.18,'Nylon-CF':1.10,'ASA-CF':1.12,'Nylon-GF':1.15,'PC-GF':1.32 } },
+            'HIPS':1.05,'PP':0.91,'PA6':1.13,'PC-ABS':1.10,
+            'PLA-CF':1.18,'ABS-CF':1.12,'PETG-CF':1.20,'PET-CF':1.30,'TPU-CF':1.18,'Nylon-CF':1.10,'ASA-CF':1.12,'Nylon-GF':1.15,'PC-CF':1.25,'PC-GF':1.32,
+            'PLA-Aero':0.65,'ASA-Aero':0.65 } },
   SLA: { fillFactor: 1.0,
     mats: { 'Standard':1.10,'Clear':1.12,'High Temp':1.14,'ABS-Like':1.08,'Flexible':1.15 } },
 };
