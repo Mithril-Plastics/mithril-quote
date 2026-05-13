@@ -118,8 +118,8 @@
 .mq-fl-price{font-size:15px;font-weight:800;color:#54f2e5;text-align:right;white-space:nowrap}
 .mq-badge{background:rgba(84,242,229,.12);color:#54f2e5;border:1px solid rgba(84,242,229,.35);border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700}
 .mq-discount-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(84,242,229,.04);border:1px solid rgba(84,242,229,.14);border-radius:10px;padding:10px 14px;margin:4px 0 16px}
-.mq-discount-bar-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#666;white-space:nowrap;margin-right:2px}
-.mq-discount-tier{font-size:12px;font-weight:700;color:#555;padding:3px 10px;border-radius:99px;border:1px solid rgba(86,5,145,.3);white-space:nowrap;transition:color .15s,border-color .15s,background .15s}
+.mq-discount-bar-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#aaa;white-space:nowrap;margin-right:2px}
+.mq-discount-tier{font-size:12px;font-weight:700;color:#c9b8e8;padding:3px 10px;border-radius:99px;border:1px solid rgba(149,100,220,.55);white-space:nowrap;transition:color .15s,border-color .15s,background .15s}
 .mq-discount-tier.active{color:#54f2e5;border-color:rgba(84,242,229,.45);background:rgba(84,242,229,.1)}
 .mq-tier-save{display:block;font-size:11px;font-style:normal;opacity:.75;margin-top:3px;font-weight:400;letter-spacing:.02em}
 .mq-grand-row{display:flex;justify-content:space-between;align-items:baseline;padding-top:18px;margin-top:12px;border-top:1px solid rgba(84,242,229,.3);font-weight:800;font-size:22px;color:#fff;margin-bottom:8px}
@@ -132,7 +132,7 @@
 .mq-cta:hover{background:#6b0ab5;box-shadow:0 0 28px rgba(86,5,145,.75)}
 .mq-cta:disabled{opacity:.45;cursor:not-allowed}
 .mq-footnote{text-align:center;font-size:13px;color:#888;margin-top:16px}
-.mq-contact-heading{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#ccc;margin-bottom:12px;padding-top:6px}
+.mq-contact-heading{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;margin-bottom:12px;padding-top:6px}
 #mq .mq-inp{display:block;width:100%;padding:13px 16px;margin-bottom:12px;border:1px solid rgba(86,5,145,.45);border-radius:10px;font-size:15px;color:#fff;font-family:'Khula',sans-serif;background:rgba(86,5,145,.08);outline:none;transition:border-color .15s,box-shadow .15s}
 #mq .mq-inp:focus{border-color:#54f2e5;box-shadow:0 0 0 3px rgba(84,242,229,.12)}
 #mq .mq-inp::placeholder{color:#888}
