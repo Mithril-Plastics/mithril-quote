@@ -9,7 +9,9 @@
   // Skip on the dedicated quote page (widget already inline there)
   if (window.location.pathname === '/instant-quote') return;
 
-  var CDN_WIDGET = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@f29d891/frontend';
+  // widget.js is loaded from @main so material/pricing updates flow through automatically.
+  // Only floating-widget.js itself needs a pinned hash in the Webflow Site Settings tag.
+  var CDN_WIDGET = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@main/frontend';
   var CDN_THREE  = 'https://cdn.jsdelivr.net/npm/three@0.128.0';
 
   // ── Widget CSS ──────────────────────────────────────────────────────────────
@@ -60,7 +62,7 @@
   // ── Widget JS (deferred) ────────────────────────────────────────────────────
   var ws = document.createElement('script');
   ws.defer = true;
-  ws.src   = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@03d107a/frontend/widget.js';
+  ws.src   = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@main/frontend/widget.js';
   document.head.appendChild(ws);
 
   // ── Floating button + Modal HTML ────────────────────────────────────────────
