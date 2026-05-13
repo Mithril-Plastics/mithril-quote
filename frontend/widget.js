@@ -63,7 +63,7 @@ const MOCK_RATES = {
 
 // Material densities (g/cm³) and FDM infill factor for weight estimation
 const DENSITIES = {
-  FDM: { fillFactor: 0.20,
+  FDM: { fillFactor: 0.35,
     mats: { 'PLA':1.24,'ABS':1.04,'PETG':1.27,'TPU':1.21,'Nylon':1.01,'ASA':1.07,'PET':1.38,'PC':1.20,
             'PLA-CF':1.18,'ABS-CF':1.12,'PETG-CF':1.20,'TPU-CF':1.18,'Nylon-CF':1.10,'ASA-CF':1.12,'Nylon-GF':1.15,'PC-GF':1.32 } },
   SLA: { fillFactor: 1.0,
