@@ -198,9 +198,28 @@
 
   document.body.insertAdjacentHTML('beforeend', html);
 
+  // ── Early file buffer ───────────────────────────────────────────────────────
+  // widget.js loads async from CDN. If the user picks a file before it finishes
+  // downloading, the change event fires with no handler attached (nothing happens).
+  // Solution: capture files here in floating-widget.js, then replay them in
+  // widget.js's onload once handleFiles is defined.
+  var _mqPendingFiles = null;
+  document.getElementById('mq-input').addEventListener('change', function fwEarly(e) {
+    if (typeof handleFiles === 'function') return; // widget.js already ready — its own listener handles it
+    _mqPendingFiles = Array.from(e.target.files);  // copy File refs before clearing
+    e.target.value = '';
+  });
+
   // ── Widget JS — loaded AFTER HTML so DOM elements exist when it runs ────────
   var ws = document.createElement('script');
   ws.src = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@4c875e8/frontend/widget.js';
+  ws.onload = function () {
+    if (_mqPendingFiles && _mqPendingFiles.length) {
+      var fl = _mqPendingFiles;
+      _mqPendingFiles = null;
+      handleFiles(fl); // replay the captured file selection
+    }
+  };
   document.head.appendChild(ws);
 
   // ── Open / close functions ──────────────────────────────────────────────────
