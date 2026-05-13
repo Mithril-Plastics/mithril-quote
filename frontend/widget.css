@@ -90,8 +90,8 @@
 .mq-opt small{display:block;font-size:13px;font-weight:400;color:#b8b8b8;margin-top:7px;line-height:1.5}
 .mq-help-decide-btn{width:100%;text-align:left;background:rgba(84,242,229,.06);border:1.5px dashed rgba(84,242,229,.45);border-radius:12px;padding:14px 18px;margin-bottom:12px;cursor:pointer;font-family:'Khula',sans-serif;transition:background .15s,border-color .15s}
 .mq-help-decide-btn:hover{background:rgba(84,242,229,.12);border-color:rgba(84,242,229,.7)}
-.mq-help-decide-title{font-size:15px;font-weight:800;color:#54f2e5;display:block;margin-bottom:3px}
-.mq-help-decide-sub{font-size:12px;color:#888;line-height:1.45}
+.mq-help-decide-title{font-size:18px;font-weight:800;color:#fff;display:block;margin-bottom:4px}
+.mq-help-decide-sub{font-size:12px;color:#aaa;line-height:1.45}
 .mq-help-notice{background:rgba(84,242,229,.07);border:1px solid rgba(84,242,229,.3);border-radius:10px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#aaa;line-height:1.55}
 .mq-help-notice strong{color:#54f2e5;display:block;margin-bottom:4px;font-size:14px}
 .mq-mat-section{margin-bottom:8px;border:1px solid rgba(86,5,145,.35);border-radius:12px;overflow:hidden;transition:border-color .15s}
