@@ -60,7 +60,7 @@
   // ── Widget JS (deferred) ────────────────────────────────────────────────────
   var ws = document.createElement('script');
   ws.defer = true;
-  ws.src   = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@87ef3ff/frontend/widget.js';
+  ws.src   = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@8f4bd70/frontend/widget.js';
   document.head.appendChild(ws);
 
   // ── Floating button + Modal HTML ────────────────────────────────────────────
