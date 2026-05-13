@@ -9,7 +9,7 @@
   // Skip on the dedicated quote page (widget already inline there)
   if (window.location.pathname === '/instant-quote') return;
 
-  var CDN_WIDGET = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@85c5a15/frontend';
+  var CDN_WIDGET = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@df2d96e/frontend';
   var CDN_THREE  = 'https://cdn.jsdelivr.net/npm/three@0.128.0';
 
   // ── Widget CSS ──────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@
 
   // ── Widget JS — loaded AFTER HTML so DOM elements exist when it runs ────────
   var ws = document.createElement('script');
-  ws.src = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@85c5a15/frontend/widget.js';
+  ws.src = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@df2d96e/frontend/widget.js';
   ws.onload = function () {
     if (_mqPendingFiles && _mqPendingFiles.length) {
       var fl = _mqPendingFiles;
