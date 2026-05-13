@@ -53,12 +53,15 @@ const QTY_BREAKS = [
   { min: 50, max: null, pct: 28 },
 ];
 
+// Material rates are in $/cm³ of SOLID material.
+// Pricing formula applies fillFactor so actual charge scales with infill density:
+//   base = volume × fillFactor × material_rate  +  (volume / cm3PerHr) × machineRatePerHr
 const MOCK_RATES = {
-  FDM: { machineRatePerHr: 2.50, cm3PerHr: 8,
-    mats: { 'PLA':0.15,'ABS':0.18,'PETG':0.17,'TPU':0.25,'Nylon':0.28,'ASA':0.20,'PET':0.16,'PC':0.32,
-            'PLA-CF':0.36,'ABS-CF':0.42,'PETG-CF':0.38,'TPU-CF':0.46,'Nylon-CF':0.58,'ASA-CF':0.44,'Nylon-GF':0.50,'PC-GF':0.54 } },
-  SLA: { machineRatePerHr: 5.00, cm3PerHr: 18,
-    mats: { 'Standard':0.30,'Clear':0.36,'High Temp':0.65,'ABS-Like':0.33,'Flexible':0.48 } },
+  FDM: { machineRatePerHr: 3.50, cm3PerHr: 8,
+    mats: { 'PLA':1.04,'ABS':1.15,'PETG':1.26,'TPU':1.75,'Nylon':2.18,'ASA':1.32,'PET':1.15,'PC':2.61,
+            'PLA-CF':3.04,'ABS-CF':3.61,'PETG-CF':3.46,'TPU-CF':4.18,'Nylon-CF':5.18,'ASA-CF':3.89,'Nylon-GF':4.61,'PC-GF':5.04 } },
+  SLA: { machineRatePerHr: 7.50, cm3PerHr: 18,
+    mats: { 'Standard':0.53,'Clear':0.83,'High Temp':1.78,'ABS-Like':0.68,'Flexible':1.08 } },
 };
 
 // Material densities (g/cm³) and FDM infill factor for weight estimation
@@ -701,12 +704,13 @@ function discountPct(qty) {
 }
 
 function calcLine(file) {
-  var cfg  = MOCK_RATES[S.process];
-  var rate = cfg.mats[S.material] || 0.20;
-  var hrs  = file.volume / cfg.cm3PerHr;
-  var base = +(file.volume * rate + hrs * cfg.machineRatePerHr).toFixed(2);
-  var pct  = discountPct(file.qty);
-  var unit = +(base * (1 - pct / 100)).toFixed(2);
+  var cfg        = MOCK_RATES[S.process];
+  var fillFactor = DENSITIES[S.process].fillFactor;
+  var rate       = cfg.mats[S.material] || 0.20;
+  var hrs        = file.volume / cfg.cm3PerHr;
+  var base       = +(file.volume * fillFactor * rate + hrs * cfg.machineRatePerHr).toFixed(2);
+  var pct        = discountPct(file.qty);
+  var unit       = +(base * (1 - pct / 100)).toFixed(2);
   return { base: base, unit: unit, pct: pct, lineTotal: +(unit * file.qty).toFixed(2), leadDays: Math.max(3, Math.ceil((file.qty * hrs) / 16) + 2) };
 }
 
