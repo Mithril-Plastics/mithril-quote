@@ -544,8 +544,13 @@ function handleFiles(fileList) {
 var input = document.getElementById('mq-input');
 var zone  = document.getElementById('mq-zone');
 
-// Empty-state drop zone — clicking anywhere in the zone (or the button) opens picker
-zone.addEventListener('click', function() { input.click(); });
+// Empty-state drop zone — clicking anywhere in the zone opens picker.
+// Skip if the click came from the #mq-browse label — label-for already
+// triggers the input natively; a second input.click() would cancel it.
+zone.addEventListener('click', function(e) {
+  if (e.target.closest('#mq-browse')) return;
+  input.click();
+});
 zone.addEventListener('dragover',  function(e) { e.preventDefault(); zone.classList.add('over'); });
 zone.addEventListener('dragleave', function() { zone.classList.remove('over'); });
 zone.addEventListener('drop', function(e) { e.preventDefault(); zone.classList.remove('over'); handleFiles(e.dataTransfer.files); });
