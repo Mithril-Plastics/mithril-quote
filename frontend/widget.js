@@ -1442,3 +1442,18 @@ function renderShipOpts(eligible, zip) {
     });
   });
 }
+
+// ── THEME TOGGLE ──────────────────────────────────────────────────────────────
+(function() {
+  var mq  = document.getElementById('mq');
+  var btn = document.getElementById('mq-theme-btn');
+  if (!mq || !btn) return;
+  // Restore saved preference — default is light (no class needed)
+  if (localStorage.getItem('mq-theme') === 'dark') {
+    mq.classList.add('mq-dark');
+  }
+  btn.addEventListener('click', function() {
+    var dark = mq.classList.toggle('mq-dark');
+    localStorage.setItem('mq-theme', dark ? 'dark' : 'light');
+  });
+}());
