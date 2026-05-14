@@ -811,9 +811,15 @@ function renderHelpDecideQuote(eligible) {
       '<h3>Request received!</h3>' +
       '<p>We\'ll review your files and follow up with a material recommendation and quote within 1 business day.</p>' +
     '</div>' +
+    '<div class="mq-next-steps">' +
+      '<p class="mq-next-steps-label">What happens next</p>' +
+      '<div class="mq-next-step"><span class="mq-next-step-num">1</span><span class="mq-next-step-text">We review your files and application notes</span></div>' +
+      '<div class="mq-next-step"><span class="mq-next-step-num">2</span><span class="mq-next-step-text">Our team recommends the best material for your needs and budget</span></div>' +
+      '<div class="mq-next-step"><span class="mq-next-step-num">3</span><span class="mq-next-step-text">You receive a full quote within 1 business day</span></div>' +
+    '</div>' +
     '<div id="mq-submit-err"></div>' +
-    '<p class="mq-trust-line">🔒 Your files are never shared · Response within 1 business day</p>' +
-    '<button class="mq-cta" id="mq-req-btn">Request Material Recommendation →</button>';
+    '<div class="mq-cta-wrap"><button class="mq-cta" id="mq-req-btn">Request Material Recommendation →</button></div>' +
+    '<p class="mq-trust-line">🔒 Files are never shared · Response within 1 business day</p>';
 
   document.getElementById('mq-req-btn').addEventListener('click', function() {
     var nameEl  = document.getElementById('mq-c-name');

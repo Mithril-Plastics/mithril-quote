@@ -132,7 +132,13 @@
 .mq-grand-row span:last-child{color:#54f2e5}
 .mq-savings-row{text-align:right;font-size:13px;color:#54f2e5;margin-bottom:20px;opacity:.9}
 .mq-savings-row strong{font-weight:800}
-.mq-trust-line{text-align:center;font-size:12px;color:#666;margin-bottom:12px;letter-spacing:.02em}
+.mq-trust-line{text-align:center;font-size:12px;color:#666;margin:14px 0 4px;letter-spacing:.02em}
+.mq-next-steps{margin:20px 0 16px;padding:14px 18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px}
+.mq-next-steps-label{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin:0 0 12px}
+.mq-next-step{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.mq-next-step:last-child{margin-bottom:0}
+.mq-next-step-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:rgba(86,5,145,.5);border:1px solid rgba(86,5,145,.7);color:#c9a8f0;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1}
+.mq-next-step-text{font-size:13px;color:#ccc;line-height:1.5;padding-top:3px}
 .mq-cta-wrap{text-align:center;padding-top:8px}
 .mq-cta{display:inline-block;padding:20px 56px;background:#560591;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:800;letter-spacing:.04em;cursor:pointer;transition:background .15s,box-shadow .15s;font-family:'Khula',sans-serif}
 .mq-cta:hover{background:#6b0ab5;box-shadow:0 0 28px rgba(86,5,145,.75)}
