@@ -792,7 +792,7 @@ function renderHelpDecideQuote(eligible) {
   document.getElementById('mq-quote-body').innerHTML =
     '<div class="mq-quote-meta"><strong>' + S.process + ' · Material: Team recommendation</strong></div>' +
     '<div class="mq-help-notice">' +
-      '<strong>🤔 Our team will pick the right material</strong>' +
+      '<strong>Our team will pick the right material</strong>' +
       'Share a bit about your application below and we\'ll recommend the best material for your needs, print settings, and budget — then follow up with a full quote within 1 business day.' +
     '</div>' +
     '<div class="mq-fl-header"><span>File</span><span></span><span></span><span></span></div>' +
