@@ -1,24 +1,29 @@
 /**
  * floating-widget.js — Self-injecting floating quote button for Mithril Plastics.
  *
- * MODAL MODE (default):
+ * MODAL MODE (default — all pages except /instant-quote):
  *   Paste one <script defer src="..."> tag into Webflow Site Settings > Footer Code.
- *   Automatically skips the /instant-quote page to avoid widget ID conflicts.
+ *   Injects a floating "Get Instant Quote" button and modal containing the widget.
  *
- * INLINE MODE (for /instant-quote embed):
- *   Set window.MQ_INLINE = 'mount-element-id' BEFORE loading this script.
- *   The widget renders inline at that element instead of as a floating button + modal.
- *   Use a synchronous <script src="..."> (no defer) so it executes in place.
+ * INLINE MODE (/instant-quote page):
+ *   widget-embed.html renders the #mq HTML directly in the page (Webflow renders
+ *   it in the correct position). This script auto-detects that #mq is already in
+ *   the DOM and skips HTML injection — it only loads CSS, Three.js, and widget.js.
+ *
+ *   This means ALL widget changes (JS, CSS, HTML structure) live in one place:
+ *   floating-widget.js. widget-embed.html copies the #mq HTML block but its
+ *   scripts all defer to this file.
  */
 (function () {
   'use strict';
 
-  // INLINE mode: set window.MQ_INLINE to a mount element ID string before loading this script.
-  var INLINE   = !!window.MQ_INLINE;
-  var MOUNT_ID = typeof window.MQ_INLINE === 'string' ? window.MQ_INLINE : null;
+  // Auto-detect whether the widget HTML is already in the DOM.
+  // True on /instant-quote (widget-embed.html pre-renders it).
+  // False everywhere else (we inject it inside the floating modal).
+  var mqInDom = !!document.getElementById('mq');
 
-  // Skip on the dedicated quote page when in normal (modal) mode
-  if (!INLINE && window.location.pathname === '/instant-quote') return;
+  // In modal mode, skip the /instant-quote page to avoid conflicts.
+  if (!mqInDom && window.location.pathname === '/instant-quote') return;
 
   var CDN_WIDGET = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@d4f11c6/frontend';
   var CDN_THREE  = 'https://cdn.jsdelivr.net/npm/three@0.128.0';
@@ -30,7 +35,7 @@
   document.head.appendChild(cssLink);
 
   // ── Float button + Modal styles (modal mode only) ───────────────────────────
-  if (!INLINE) {
+  if (!mqInDom) {
     var style = document.createElement('style');
     style.textContent = [
       '#mq-float-btn{position:fixed;right:28px;bottom:36px;z-index:9990;display:flex;align-items:center;gap:9px;background:linear-gradient(135deg,#560591 0%,#7b2fbe 100%);color:#fff;border:none;border-radius:50px;padding:14px 24px;font-size:15px;font-weight:700;font-family:"Khula",sans-serif,system-ui;cursor:pointer;box-shadow:0 4px 28px rgba(86,5,145,.5);transition:transform .15s,box-shadow .15s;white-space:nowrap}',
@@ -72,9 +77,13 @@
     };
   }
 
-  // ── Core widget HTML — single source of truth for both modes ────────────────
-  // This is the ONLY place the #mq HTML structure is defined.
-  // Both the inline embed and the modal use exactly this markup.
+  // ── Core widget HTML ─────────────────────────────────────────────────────────
+  // Single source of truth for the #mq HTML structure.
+  // In modal mode this is injected dynamically.
+  // In inline mode (widget-embed.html) this same structure is written out
+  // as static HTML so Webflow renders it in the correct page position.
+  // Keep widget-embed.html's HTML block in sync with mqHtml when making
+  // structural changes here.
   var mqHtml = ''
     + '<div id="mq">'
 
@@ -192,18 +201,9 @@
     +   '</div>' // .mq-body
     + '</div>';  // #mq
 
-  // ── Inject HTML ─────────────────────────────────────────────────────────────
-  // IMPORTANT: HTML must be injected BEFORE widget.js is appended.
-  if (INLINE) {
-    // Inline mode: replace mount element with widget HTML
-    var mount = MOUNT_ID ? document.getElementById(MOUNT_ID) : null;
-    if (mount) {
-      mount.outerHTML = mqHtml;
-    } else {
-      document.body.insertAdjacentHTML('beforeend', mqHtml);
-    }
-  } else {
-    // Modal mode: wrap widget in float button + modal overlay
+  // ── Inject HTML (modal mode only) ───────────────────────────────────────────
+  // In inline mode #mq is already in the DOM — skip injection entirely.
+  if (!mqInDom) {
     var html = ''
       + '<button id="mq-float-btn" onclick="mqOpenModal()">'
       +   '<span class="mq-float-icon">⚡</span>Get Instant Quote'
@@ -227,11 +227,11 @@
   // ── Early file buffer ───────────────────────────────────────────────────────
   // widget.js loads async from CDN. If the user picks a file before it finishes
   // downloading, the change event fires with no handler attached (nothing happens).
-  // Solution: capture files here, then replay them in widget.js's onload.
+  // Solution: capture files here, then replay them once widget.js is ready.
   var _mqPendingFiles = null;
   document.getElementById('mq-input').addEventListener('change', function fwEarly(e) {
     if (typeof handleFiles === 'function') return; // widget.js already ready
-    _mqPendingFiles = Array.from(e.target.files);  // copy File refs before clearing
+    _mqPendingFiles = Array.from(e.target.files);
     e.target.value = '';
   });
 
@@ -242,13 +242,13 @@
     if (_mqPendingFiles && _mqPendingFiles.length) {
       var fl = _mqPendingFiles;
       _mqPendingFiles = null;
-      handleFiles(fl); // replay the captured file selection
+      handleFiles(fl);
     }
   };
   document.head.appendChild(ws);
 
   // ── Open / close functions (modal mode only) ────────────────────────────────
-  if (!INLINE) {
+  if (!mqInDom) {
     window.mqOpenModal = function () {
       document.getElementById('mq-modal-overlay').classList.add('mq-open');
       document.body.style.overflow = 'hidden';

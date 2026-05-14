@@ -3,21 +3,142 @@
      (double-click the Code Embed block in the Designer,
       clear existing content, paste this entire file)
 
-     All widget HTML lives in floating-widget.js — no duplication.
-     To update the widget, just bump the script hash below.
+     The #mq HTML is written out here so Webflow renders it in the
+     correct page position. floating-widget.js auto-detects that
+     #mq is already in the DOM and only loads CSS + scripts (no
+     duplicate injection). Keep the HTML block below in sync with
+     the mqHtml variable in floating-widget.js when making structural
+     changes. All JS/CSS changes are automatic via the shared files.
      ============================================================ -->
 
-<!-- Mount point — replaced in-place by floating-widget.js -->
-<div id="mq-inline-mount"></div>
+<!-- Widget CSS — load early to avoid flash of unstyled content -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@d4f11c6/frontend/widget.css">
 
+<!-- Widget HTML — rendered inline so Webflow places it correctly on the page -->
+<div id="mq">
+  <div class="mq-brand-header">
+    <div class="mq-brand-logo"><a href="https://www.mithrilplastics.com" target="_blank" rel="noopener noreferrer"><img src="https://cdn.prod.website-files.com/68dc75f5161ad85e0cd30bd2/69fe4fbbd1c90020242cf636_logo.gif" alt="Mithril Plastics"></a></div>
+    <div class="mq-brand-tag">Instant Quote</div>
+  </div>
+  <div class="mq-steps">
+    <div class="mq-step active" id="mq-s1">1 · Upload</div>
+    <div class="mq-step"        id="mq-s2">2 · Process</div>
+    <div class="mq-step"        id="mq-s3">3 · Material</div>
+    <div class="mq-step"        id="mq-s4">4 · Quote</div>
+  </div>
+
+  <div class="mq-body">
+
+    <!-- ── UPLOAD SCREEN ── -->
+    <div class="mq-screen on" id="mq-upload">
+      <input type="file" id="mq-input" accept=".stl,.obj,.ply,.glb,.gltf" multiple style="display:none">
+      <div id="mq-empty-state">
+        <p class="mq-heading">Upload your 3D files</p>
+        <div class="mq-drop" id="mq-zone">
+          <span class="mq-drop-icon">📂</span>
+          <p class="mq-drop-headline">Drag &amp; drop your files here</p>
+          <p class="mq-drop-sub">or</p>
+          <label class="mq-drop-cta" id="mq-browse" for="mq-input">Browse files</label>
+          <p class="mq-formats">STL · OBJ · PLY · GLB · GLTF</p>
+        </div>
+        <div id="mq-upload-err"></div>
+      </div>
+      <div id="mq-files-state" style="display:none">
+        <div class="mq-upload-header">
+          <div class="mq-upload-count" id="mq-model-count">0 models uploaded</div>
+          <div class="mq-upload-status">Ready to go!</div>
+          <div class="mq-upload-hint">Files are analysed locally — nothing leaves your device until you submit.</div>
+        </div>
+        <div class="mq-drop-more" id="mq-drop-more"><span>⬆</span><span>Upload more files or drag and drop here</span></div>
+        <div class="mq-sel-row"><span class="mq-selected-count" id="mq-sel-count">0 models selected</span></div>
+        <div class="mq-controls-bar">
+          <div class="mq-controls-left">
+            <span class="mq-unit-label">File unit: <strong>Millimeters (mm)</strong></span>
+            <div class="mq-global-qty">
+              <span class="mq-global-qty-label">Quantity:</span>
+              <div class="mq-stepper">
+                <button id="mq-g-dec">−</button>
+                <input type="number" id="mq-g-qty" value="1" min="1">
+                <button id="mq-g-inc">+</button>
+              </div>
+            </div>
+          </div>
+          <div class="mq-controls-right">
+            <button class="mq-toolbar-btn" id="mq-select-all">Select all files</button>
+            <button class="mq-toolbar-btn danger" id="mq-delete-sel">🗑 Delete</button>
+          </div>
+        </div>
+        <div class="mq-cards-grid" id="mq-cards-grid"></div>
+        <div id="mq-upload-err2"></div>
+        <div class="mq-cta-wrap">
+          <button class="mq-cta" id="mq-continue">See Materials &amp; Prices →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ITAR / COMPLIANCE SCREEN ── -->
+    <div class="mq-screen" id="mq-itar">
+      <button class="mq-back" id="mq-back-itar">&#8592; Back</button>
+      <p class="mq-heading">Export &amp; Regulatory Compliance</p>
+      <div class="mq-itar-body">
+        <div class="mq-itar-icon">⚠️</div>
+        <p class="mq-itar-text"><strong>Mithril Plastics is not registered</strong> under ITAR (International Traffic in Arms Regulations), the U.S. Department of Energy, or any other government export-control or defense-related program.</p>
+        <p class="mq-itar-text">We are unable to manufacture parts from files or designs that are subject to export control, government regulation, or classified designation of any kind.</p>
+        <p class="mq-itar-confirm-label">Please confirm to continue:</p>
+        <button class="mq-cta" id="mq-itar-confirm">My files are not ITAR or government regulated &rarr;</button>
+        <button class="mq-itar-decline" id="mq-itar-decline">My files may be subject to regulation</button>
+        <div class="mq-itar-contact" id="mq-itar-contact" style="display:none">
+          <p>Thank you for letting us know. We are unable to process regulated files through this system. Please <a href="/contact" class="mq-itar-link">contact us directly</a> and we will do our best to refer you to an appropriately registered manufacturer.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PROCESS SCREEN ── -->
+    <div class="mq-screen" id="mq-process">
+      <button class="mq-back" id="mq-back-proc">&#8592; Back</button>
+      <p class="mq-heading">Select manufacturing process</p>
+      <div class="mq-grid-2">
+        <button class="mq-opt" id="mq-fdm" data-p="FDM">FDM<small>Fused Deposition Modeling — filament-based printing. Fast, affordable, wide material selection.</small></button>
+        <button class="mq-opt" id="mq-sla" data-p="SLA">SLA<small>Stereolithography — resin-based printing. Ultra-fine detail and smooth surface finish.</small></button>
+      </div>
+      <div id="mq-proc-warn"></div>
+    </div>
+
+    <!-- ── MATERIAL SCREEN ── -->
+    <div class="mq-screen" id="mq-material">
+      <button class="mq-back" id="mq-back-mat">&#8592; Back</button>
+      <p class="mq-heading">Select material</p>
+      <div id="mq-mat-grid"></div>
+      <div id="mq-mat-err"></div>
+    </div>
+
+    <!-- ── QUOTE SCREEN ── -->
+    <div class="mq-screen" id="mq-quote">
+      <button class="mq-back" id="mq-back-quote">&#8592; Back</button>
+      <p class="mq-heading">Your instant quote</p>
+      <div id="mq-quote-body"></div>
+    </div>
+
+    <!-- ── LOADING SCREEN ── -->
+    <div class="mq-screen" id="mq-loading">
+      <div class="mq-loader">
+        <div class="mq-spinner"></div>
+        <p id="mq-load-txt">Analysing files…</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Widget config -->
 <script>
 window.MQ = {
   API_BASE:      'https://YOUR-BACKEND.railway.app', // only needed when MOCK_MODE is false
   MOCK_MODE:     true,                               // set to false when backend is live
   FORMSPREE_URL: 'https://formspree.io/f/mojrlbvn',
 };
-window.MQ_INLINE = 'mq-inline-mount'; // tells floating-widget.js to render inline here
 </script>
 
-<!-- Synchronous (no defer) so the widget renders at this exact position on the page -->
-<script src="https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@2d15456/frontend/floating-widget.js"></script>
+<!-- floating-widget.js auto-detects #mq is already in the DOM and
+     only loads Three.js + widget.js (no modal injection, no float button) -->
+<script defer src="https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@HASH_PENDING/frontend/floating-widget.js"></script>
