@@ -52,7 +52,7 @@
 
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 #mq *{box-sizing:border-box;font-family:'Khula',sans-serif}
-#mq{max-width:780px;margin:0 auto;background:var(--mq-bg);border:1px solid var(--mq-wbrd);border-radius:18px;box-shadow:var(--mq-wshd);display:flex;flex-direction:column;max-height:calc(100vh - 100px);position:sticky;top:20px}
+#mq{max-width:780px;margin:0 auto;background:var(--mq-bg);border:1px solid var(--mq-wbrd);border-radius:18px;box-shadow:var(--mq-wshd);display:flex;flex-direction:column;max-height:calc(100vh - 180px)}
 .mq-brand-header{display:flex;align-items:center;justify-content:space-between;padding:34px 48px 32px;border-bottom:1px solid rgba(86,5,145,.5);flex-shrink:0}
 .mq-brand-logo img{height:42px;width:auto;display:block}
 .mq-brand-right{display:flex;align-items:center;gap:14px}
@@ -304,7 +304,7 @@
 
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 @media(max-width:580px){
-  #mq{max-height:calc(100vh - 60px);top:10px}
+  #mq{max-height:calc(100vh - 120px)}
   .mq-body{padding:28px 24px 36px}
   .mq-brand-header{padding:26px 24px}
   .mq-step{font-size:12px;padding:20px 6px}
