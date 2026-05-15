@@ -52,13 +52,8 @@
 
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 #mq *{box-sizing:border-box;font-family:'Khula',sans-serif}
-#mq{max-width:780px;margin:0 auto;background:var(--mq-bg);border:1px solid var(--mq-wbrd);border-radius:18px;box-shadow:var(--mq-wshd);display:flex;flex-direction:column;max-height:calc(100vh - 140px)}
-.mq-body{overflow-y:auto;flex:1;min-height:0;padding:36px 48px 48px}
-.mq-body::-webkit-scrollbar{width:6px}
-.mq-body::-webkit-scrollbar-track{background:transparent}
-.mq-body::-webkit-scrollbar-thumb{background:rgba(86,5,145,.25);border-radius:3px}
-.mq-body::-webkit-scrollbar-thumb:hover{background:rgba(86,5,145,.45)}
-.mq-brand-header{display:flex;align-items:center;justify-content:space-between;padding:34px 48px 32px;border-bottom:1px solid rgba(86,5,145,.5)}
+#mq{max-width:780px;margin:0 auto;background:var(--mq-bg);border:1px solid var(--mq-wbrd);border-radius:18px;box-shadow:var(--mq-wshd);display:flex;flex-direction:column;max-height:calc(100vh - 100px);position:sticky;top:20px}
+.mq-brand-header{display:flex;align-items:center;justify-content:space-between;padding:34px 48px 32px;border-bottom:1px solid rgba(86,5,145,.5);flex-shrink:0}
 .mq-brand-logo img{height:42px;width:auto;display:block}
 .mq-brand-right{display:flex;align-items:center;gap:14px}
 .mq-brand-tag{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--mq-teal);background:var(--mq-teal-bg);border:1px solid var(--mq-teal-brd);border-radius:4px;padding:8px 16px}
@@ -69,8 +64,14 @@
 #mq.mq-dark .mq-theme-sun{display:flex}
 #mq.mq-dark .mq-theme-moon{display:none}
 
+.mq-body{overflow-y:auto;flex:1;min-height:0;padding:36px 48px 48px}
+.mq-body::-webkit-scrollbar{width:6px}
+.mq-body::-webkit-scrollbar-track{background:transparent}
+.mq-body::-webkit-scrollbar-thumb{background:rgba(86,5,145,.25);border-radius:3px}
+.mq-body::-webkit-scrollbar-thumb:hover{background:rgba(86,5,145,.45)}
+
 /* ─── Steps bar ───────────────────────────────────────────────────────────── */
-.mq-steps{display:flex;background:var(--mq-bg-steps);border-bottom:1px solid rgba(86,5,145,.5);overflow:hidden}
+.mq-steps{display:flex;background:var(--mq-bg-steps);border-bottom:1px solid rgba(86,5,145,.5);overflow:hidden;flex-shrink:0}
 .mq-step{flex:1;padding:26px 12px;text-align:center;font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#888;border-bottom:3px solid transparent;transition:color .2s,border-color .2s}
 .mq-step.active{color:var(--mq-teal);border-bottom-color:var(--mq-teal)}
 .mq-step.done{color:#9040d0;border-bottom-color:#9040d0;cursor:pointer}
@@ -303,7 +304,7 @@
 
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 @media(max-width:580px){
-  #mq{max-height:calc(100vh - 80px)}
+  #mq{max-height:calc(100vh - 60px);top:10px}
   .mq-body{padding:28px 24px 36px}
   .mq-brand-header{padding:26px 24px}
   .mq-step{font-size:12px;padding:20px 6px}
