@@ -72,7 +72,7 @@
 
 /* ─── Steps bar ───────────────────────────────────────────────────────────── */
 .mq-steps{display:flex;background:var(--mq-bg-steps);border-bottom:1px solid rgba(86,5,145,.5);overflow:hidden;flex-shrink:0}
-.mq-step{flex:1;padding:26px 12px;text-align:center;font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#888;border-bottom:3px solid transparent;transition:color .2s,border-color .2s}
+.mq-step{flex:1;padding:18px 8px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#888;border-bottom:3px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap}
 .mq-step.active{color:var(--mq-teal);border-bottom-color:var(--mq-teal)}
 .mq-step.done{color:#9040d0;border-bottom-color:#9040d0;cursor:pointer}
 .mq-step.done:hover{color:#b060f0;border-bottom-color:#b060f0}
@@ -290,7 +290,7 @@
   #mq{max-height:calc(100vh - 120px)}
   .mq-body{padding:28px 24px 36px}
   .mq-brand-header{padding:26px 24px}
-  .mq-step{font-size:12px;padding:20px 6px}
+  .mq-step{font-size:11px;padding:14px 4px;letter-spacing:.02em}
   .mq-card{padding:16px}
   .mq-cards-grid{grid-template-columns:1fr}
   .mq-controls-bar{flex-direction:column;align-items:flex-start}
