@@ -282,25 +282,8 @@
 @keyframes mq-spin{to{transform:rotate(360deg)}}
 .mq-spinner{width:36px;height:36px;border:2px solid rgba(86,5,145,.2);border-top-color:var(--mq-teal);border-radius:50%;animation:mq-spin .75s linear infinite;margin:0 auto 20px}
 
-/* ─── Shipping / order breakdown ──────────────────────────────────────────── */
+/* ─── Contact section ─────────────────────────────────────────────────────── */
 .mq-contact-section{margin-top:28px;padding-top:24px;border-top:1px solid rgba(86,5,145,.25)}
-.mq-shipping-section{margin-top:28px;padding-top:24px;border-top:1px solid rgba(86,5,145,.25)}
-.mq-optional-tag{font-size:11px;font-weight:400;text-transform:none;letter-spacing:normal;color:#888;margin-left:6px}
-.mq-zip-err{font-size:13px;color:#e0b870;background:rgba(255,180,50,.07);border:1px solid rgba(255,180,50,.3);border-radius:8px;padding:10px 14px;margin-top:-4px;margin-bottom:12px}
-.mq-addr-row{display:grid;grid-template-columns:130px 1fr 90px;gap:10px}
-.mq-ship-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 8px}
-.mq-ship-opt{border:1px solid rgba(86,5,145,.35);border-radius:11px;padding:14px 16px;cursor:pointer;background:rgba(86,5,145,.05);transition:border-color .15s,background .15s;text-align:center}
-.mq-ship-opt:hover{border-color:var(--mq-teal-brd);background:var(--mq-teal-bg)}
-.mq-ship-opt.selected{border-color:var(--mq-teal);background:var(--mq-teal-bg);box-shadow:0 0 14px rgba(84,242,229,.08)}
-.mq-ship-opt-name{font-size:14px;font-weight:800;color:var(--mq-tx);margin-bottom:4px}
-.mq-ship-opt-days{font-size:12px;color:#888;margin-bottom:8px}
-.mq-ship-opt-price{font-size:20px;font-weight:800;color:var(--mq-teal)}
-.mq-ship-note{font-size:12px;color:#888;margin-top:6px;line-height:1.5}
-.mq-order-breakdown{background:var(--mq-teal-bg);border:1px solid var(--mq-teal-brd);border-radius:11px;padding:16px 20px;margin:16px 0 4px}
-.mq-order-breakdown-line{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--mq-tx-2);padding:5px 0;border-top:1px solid rgba(86,5,145,.15)}
-.mq-order-breakdown-line:first-child{border-top:none}
-.mq-order-breakdown-total{display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:700;color:var(--mq-tx);padding-top:12px;margin-top:8px;border-top:1px solid var(--mq-teal-brd)}
-.mq-order-breakdown-total strong{color:var(--mq-teal);font-size:20px;font-weight:800}
 
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 @media(max-width:580px){

@@ -85,54 +85,6 @@ const DENSITIES = {
     mats: { 'Standard':1.10,'Clear':1.12,'High Temp':1.14,'ABS-Like':1.08,'Flexible':1.15 } },
 };
 
-// Origin: Brea, CA 92821
-// Carrier zone by first 2 digits of destination ZIP (UPS/FedEx zone map from 928xx origin)
-const ZIP2_ZONE = {
-  '00':8,'01':8,'02':8,'03':8,'04':8,'05':8,'06':8,'07':8,'08':8,'09':8,
-  '10':8,'11':8,'12':8,'13':8,'14':8,'15':8,'16':8,'17':8,'18':8,'19':8,
-  '20':8,'21':8,'22':8,'23':8,'24':8,'25':8,'26':8,'27':8,'28':8,'29':8,
-  '30':8,'31':8,'32':8,'33':8,'34':8,'35':7,'36':7,'37':7,'38':7,'39':7,
-  '40':7,'41':7,'42':7,'43':7,'44':7,'45':7,'46':7,'47':7,'48':7,'49':7,
-  '50':7,'51':7,'52':7,'53':7,'54':7,'55':7,'56':7,'57':7,'58':7,'59':6,
-  '60':7,'61':7,'62':7,'63':7,'64':7,'65':7,'66':6,'67':6,'68':6,'69':6,
-  '70':6,'71':6,'72':6,'73':6,'74':6,'75':7,'76':7,'77':7,'78':6,'79':5,
-  '80':6,'81':6,'82':5,'83':5,'84':5,'85':4,'86':4,'87':5,'88':5,'89':3,
-  '90':2,'91':2,'92':2,'93':3,'94':4,'95':4,'96':4,'97':5,'98':6,'99':6,
-};
-
-// Sales tax rate applied to parts (CA — shipping separately stated is not taxable)
-const TAX_RATE = 0.0775; // 7.75%
-
-// Per-zone rate tables — base charge + per-lb rate (calibrated to UPS/FedEx 2024 from Brea, CA)
-const SHIP_RATES = {
-  Ground: {
-    days: '5–7',
-    zones: {
-      2:{base:9.50,perLb:0.30}, 3:{base:10.50,perLb:0.42},
-      4:{base:12.00,perLb:0.55}, 5:{base:13.50,perLb:0.68},
-      6:{base:15.00,perLb:0.82}, 7:{base:16.50,perLb:0.95},
-      8:{base:18.00,perLb:1.10},
-    }
-  },
-  Express: {
-    days: '2–3',
-    zones: {
-      2:{base:24.00,perLb:0.75}, 3:{base:27.00,perLb:1.00},
-      4:{base:31.00,perLb:1.30}, 5:{base:35.00,perLb:1.60},
-      6:{base:39.00,perLb:1.95}, 7:{base:44.00,perLb:2.30},
-      8:{base:49.00,perLb:2.70},
-    }
-  },
-  Overnight: {
-    days: '1',
-    zones: {
-      2:{base:48.00,perLb:1.50}, 3:{base:54.00,perLb:2.00},
-      4:{base:62.00,perLb:2.60}, 5:{base:70.00,perLb:3.20},
-      6:{base:78.00,perLb:3.90}, 7:{base:88.00,perLb:4.60},
-      8:{base:98.00,perLb:5.40},
-    }
-  },
-};
 
 // ── HTML ESCAPING ─────────────────────────────────────────────────────────────
 function esc(str) {
@@ -883,7 +835,6 @@ function renderQuote() {
 
   var items = eligible.map(function(f) { return Object.assign({ file: f }, calcLine(f)); });
   S.quoteItems = items;
-  S.shipping = null; // reset shipping on each quote render
 
   function grandTotal() { return +items.reduce(function(s, it) { return s + it.lineTotal; }, 0).toFixed(2); }
   function maxLead()    { return Math.max.apply(null, items.map(function(it) { return it.leadDays; })); }
@@ -1113,16 +1064,7 @@ function renderQuote() {
     }
     document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
     document.getElementById('mq-lead').textContent  = 'Est. ' + maxLead() + ' business days';
-    renderDiscountBar(items);  // also updates savings row
-    // Re-render shipping tier prices — weight changes with qty
-    if (S.address.zip && S.address.zip.length >= 5) {
-      renderShipOpts(eligible, S.address.zip);
-      // Sync the stored cost for the already-selected tier to the new weight
-      if (S.shipping) {
-        S.shipping.cost = shipCost(S.shipping.method, eligible, S.address.zip);
-      }
-    }
-    updateOrderTotal();
+    renderDiscountBar(items);
   }
 }
 
@@ -1330,118 +1272,6 @@ window.mqDownloadPDF = function() {
     start();
   }
 };
-
-// ── STATE SELECT ─────────────────────────────────────────────────────────────
-function stateSelectHTML(id) {
-  var st = [
-    'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN',
-    'IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH',
-    'NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT',
-    'VT','VA','WA','WV','WI','WY',
-  ];
-  return '<select class="mq-inp mq-select" id="' + id + '" autocomplete="address-level1">' +
-    '<option value="">State</option>' +
-    st.map(function(s) { return '<option value="' + s + '">' + s + '</option>'; }).join('') +
-    '</select>';
-}
-
-// ── SHIPPING HELPERS ──────────────────────────────────────────────────────────
-
-// Total billable weight in lbs: volume × material density × infill factor × qty
-function wLbs(eligible) {
-  var cfg = DENSITIES[S.process];
-  var den = cfg.mats[S.material] || 1.1;
-  // f.volume is cm³; × g/cm³ = grams; / 453.592 = lbs
-  return eligible.reduce(function(s, f) {
-    return s + f.volume * cfg.fillFactor * den * f.qty;
-  }, 0) / 453.592;
-}
-
-// Outer box dimensions in inches: max part bbox + 2-inch packing buffer per side
-function boxIn(eligible) {
-  var x = 0, y = 0, z = 0;
-  eligible.forEach(function(f) {
-    x = Math.max(x, f.bbox.x);
-    y = Math.max(y, f.bbox.y);
-    z = Math.max(z, f.bbox.z);
-  });
-  var BUF = 50.8; // 2 inches in mm
-  return { l: (x + BUF) / 25.4, w: (y + BUF) / 25.4, h: (z + BUF) / 25.4 };
-}
-
-// Resolve UPS/FedEx carrier zone from destination ZIP (origin: Brea CA 92821)
-function getZone(zip) {
-  return ZIP2_ZONE[zip.substring(0, 2)] || 5;
-}
-
-// Carrier cost: uses higher of actual weight vs DIM weight (industry standard ÷ 139)
-// Rates vary by zone (distance from Brea, CA 92821)
-function shipCost(method, eligible, zip) {
-  var w    = wLbs(eligible);
-  var b    = boxIn(eligible);
-  var dim  = (b.l * b.w * b.h) / 139;
-  var bill = Math.max(w, dim, 1.0); // 1 lb minimum (carrier standard)
-  var zone = getZone(zip);
-  var r    = SHIP_RATES[method].zones[zone];
-  return +(r.base + r.perLb * bill).toFixed(2);
-}
-
-// Refresh the order breakdown row (called after tier selection or qty change)
-function updateOrderTotal() {
-  var row = document.getElementById('mq-order-total-row');
-  if (!row || !S.quoteItems) return;
-  if (S.shipping) {
-    var parts = +S.quoteItems.reduce(function(s, it) { return s + it.lineTotal; }, 0).toFixed(2);
-    var ship  = S.shipping.cost;
-    var tax   = +(parts * TAX_RATE).toFixed(2);
-    var total = +(parts + ship + tax).toFixed(2);
-    document.getElementById('mq-breakdown-parts').textContent      = '$' + parts.toFixed(2);
-    document.getElementById('mq-breakdown-ship-label').textContent = 'Shipping (' + S.shipping.method + ')';
-    document.getElementById('mq-breakdown-ship').textContent       = '$' + ship.toFixed(2);
-    document.getElementById('mq-breakdown-tax').textContent        = '$' + tax.toFixed(2);
-    document.getElementById('mq-order-total-val').textContent      = '$' + total.toFixed(2);
-    row.style.display = '';
-  } else {
-    row.style.display = 'none';
-  }
-}
-
-// Render three shipping tier cards inside #mq-ship-opts
-function renderShipOpts(eligible, zip) {
-  var optsEl = document.getElementById('mq-ship-opts');
-  if (!optsEl) return;
-  optsEl.style.display = '';
-  var w = wLbs(eligible);
-  var b = boxIn(eligible);
-  optsEl.innerHTML =
-    '<div class="mq-ship-opts">' +
-      ['Ground', 'Express', 'Overnight'].map(function(m) {
-        var cost = shipCost(m, eligible, zip);
-        var r    = SHIP_RATES[m];
-        var sel  = S.shipping && S.shipping.method === m;
-        return (
-          '<div class="mq-ship-opt' + (sel ? ' selected' : '') + '" data-method="' + m + '" data-cost="' + cost + '">' +
-            '<div class="mq-ship-opt-name">' + m + '</div>' +
-            '<div class="mq-ship-opt-days">' + r.days + ' business day' + (r.days === '1' ? '' : 's') + '</div>' +
-            '<div class="mq-ship-opt-price">$' + cost.toFixed(2) + '</div>' +
-          '</div>'
-        );
-      }).join('') +
-    '</div>' +
-    '<p class="mq-ship-note">Shipping from Brea, CA · Zone ' + getZone(zip) + ' → ZIP ' + zip +
-      ' · ~' + w.toFixed(2) + ' lbs' +
-      ' · ' + b.l.toFixed(1) + '″ × ' + b.w.toFixed(1) + '″ × ' + b.h.toFixed(1) + '″ box' +
-    '</p>';
-
-  optsEl.querySelectorAll('.mq-ship-opt').forEach(function(card) {
-    card.addEventListener('click', function() {
-      optsEl.querySelectorAll('.mq-ship-opt').forEach(function(c) { c.classList.remove('selected'); });
-      card.classList.add('selected');
-      S.shipping = { method: card.dataset.method, cost: +card.dataset.cost };
-      updateOrderTotal();
-    });
-  });
-}
 
 // ── THEME TOGGLE ──────────────────────────────────────────────────────────────
 (function() {
