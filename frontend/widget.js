@@ -701,12 +701,16 @@ function discountPct(qty) {
   return t ? t.pct : 0;
 }
 
+var MIN_PART_PRICE     = 4.00; // floor applied when algorithm price < $1
+var MIN_PART_THRESHOLD = 1.00;
+
 function calcLine(file) {
   var cfg        = MOCK_RATES[S.process];
   var fillFactor = DENSITIES[S.process].fillFactor;
   var rate       = cfg.mats[S.material] || 0.20;
   var hrs        = file.volume / cfg.cm3PerHr;
-  var base       = +(file.volume * fillFactor * rate + hrs * cfg.machineRatePerHr).toFixed(2);
+  var calculated = file.volume * fillFactor * rate + hrs * cfg.machineRatePerHr;
+  var base       = +(calculated < MIN_PART_THRESHOLD ? MIN_PART_PRICE : calculated).toFixed(2);
   var pct        = discountPct(file.qty);
   var unit       = +(base * (1 - pct / 100)).toFixed(2);
   return { base: base, unit: unit, pct: pct, lineTotal: +(unit * file.qty).toFixed(2) };
