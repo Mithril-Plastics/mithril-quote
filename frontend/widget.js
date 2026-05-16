@@ -709,7 +709,7 @@ function calcLine(file) {
   var base       = +(file.volume * fillFactor * rate + hrs * cfg.machineRatePerHr).toFixed(2);
   var pct        = discountPct(file.qty);
   var unit       = +(base * (1 - pct / 100)).toFixed(2);
-  return { base: base, unit: unit, pct: pct, lineTotal: +(unit * file.qty).toFixed(2), leadDays: Math.max(3, Math.ceil((file.qty * hrs) / 16) + 2) };
+  return { base: base, unit: unit, pct: pct, lineTotal: +(unit * file.qty).toFixed(2) };
 }
 
 function buildQuote() {
@@ -837,7 +837,6 @@ function renderQuote() {
   S.quoteItems = items;
 
   function grandTotal() { return +items.reduce(function(s, it) { return s + it.lineTotal; }, 0).toFixed(2); }
-  function maxLead()    { return Math.max.apply(null, items.map(function(it) { return it.leadDays; })); }
   function filesSummary() {
     return items.map(function(it) {
       return it.file.fileName + ' | ' + it.file.volume + ' cm³ | qty ' + it.file.qty + ' | $' + it.lineTotal.toFixed(2);
@@ -845,8 +844,7 @@ function renderQuote() {
   }
 
   document.getElementById('mq-quote-body').innerHTML =
-    '<div class="mq-quote-meta"><strong>' + S.process + ' · ' + S.materialLabel + '</strong>' +
-    '<span id="mq-lead">Est. ' + maxLead() + ' business days</span></div>' +
+    '<div class="mq-quote-meta"><strong>' + S.process + ' · ' + S.materialLabel + '</strong></div>' +
     '<div class="mq-fl-header"><span>File</span><span>Unit price</span><span>Qty</span><span>Total</span></div>' +
     '<div id="mq-lines">' + items.map(function(it, i) {
       var fileSave = it.pct > 0 ? +((it.base - it.unit) * it.file.qty).toFixed(2) : 0;
@@ -951,7 +949,6 @@ function renderQuote() {
     fd.append('material',    S.materialLabel);
     fd.append('quote',       filesSummary());
     fd.append('parts_total', '$' + grandTotal().toFixed(2));
-    fd.append('lead_time',   'Est. ' + maxLead() + ' business days');
     if (note) fd.append('note', note);
     eligible.forEach(function(f) { if (f.originalFile) fd.append('attachment', f.originalFile, f.fileName); });
 
@@ -979,7 +976,6 @@ function renderQuote() {
             company:  company,
             process:  S.process,
             material: S.materialLabel,
-            leadTime: 'Est. ' + maxLead() + ' business days',
             total:    grandTotal().toFixed(2),
             note:     note,
             items:    items.map(function(it) {
@@ -1004,7 +1000,6 @@ function renderQuote() {
               '<div class="mq-success-meta-row">' +
                 '<span><label>Process</label>' + S.process + '</span>' +
                 '<span><label>Material</label>' + S.materialLabel + '</span>' +
-                '<span><label>Lead time</label>Est. ' + maxLead() + ' business days</span>' +
               '</div>' +
               '<div class="mq-success-fl-head"><span>File</span><span>Qty</span><span>Unit</span><span>Total</span></div>' +
               items.map(function(it) {
@@ -1046,7 +1041,6 @@ function renderQuote() {
     var unit = +(it.base * (1 - pct / 100)).toFixed(2);
     it.lineTotal = +(unit * val).toFixed(2);
     it.pct = pct;
-    it.leadDays = Math.max(3, Math.ceil((val * (it.file.volume / MOCK_RATES[S.process].cm3PerHr)) / 16) + 2);
     row.querySelector('.mq-line-total').textContent = '$' + it.lineTotal.toFixed(2);
     var badge = row.querySelector('.mq-badge');
     if (pct > 0) {
@@ -1063,7 +1057,6 @@ function renderQuote() {
       }
     }
     document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
-    document.getElementById('mq-lead').textContent  = 'Est. ' + maxLead() + ' business days';
     renderDiscountBar(items);
   }
 }
@@ -1171,8 +1164,8 @@ window.mqDownloadPDF = function() {
     doc.text('QUOTE DETAILS', margin, y);
     y += 6;
 
-    var col3 = [0, 58, 116];
-    [['Process', d.process], ['Material', d.material], ['Lead Time', d.leadTime]].forEach(function(pair, i) {
+    var col3 = [0, 87];
+    [['Process', d.process], ['Material', d.material]].forEach(function(pair, i) {
       var x = margin + col3[i];
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
