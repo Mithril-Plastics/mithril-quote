@@ -775,7 +775,8 @@ function renderHelpDecideQuote(eligible) {
     '</div>' +
     '<div id="mq-submit-err"></div>' +
     '<div class="mq-cta-wrap"><button class="mq-cta" id="mq-req-btn">Request Material Recommendation →</button></div>' +
-    '<p class="mq-trust-line">🔒 Files are never shared · Response within 1 business day</p>';
+    '<p class="mq-trust-line">🔒 Files are never shared · Response within 1 business day</p>' +
+    '<p class="mq-footnote">If you don\'t hear from us, please check your spam or junk folder.</p>';
 
   document.getElementById('mq-req-btn').addEventListener('click', function() {
     var nameEl  = document.getElementById('mq-c-name');
@@ -909,7 +910,8 @@ function renderQuote() {
     '<div id="mq-submit-err"></div>' +
     '<p class="mq-trust-line">🔒 Your files are never shared · Prices confirmed within 1 business day</p>' +
     '<button class="mq-cta" id="mq-req-btn">Request My Quote →</button>' +
-    '<p class="mq-footnote">Prices based on current material rates · Estimates typically valid for 30 days</p>';
+    '<p class="mq-footnote">Prices based on current material rates · Estimates typically valid for 30 days</p>' +
+    '<p class="mq-footnote">If you don\'t hear from us, please check your spam or junk folder.</p>';
 
   // ── Qty changes in quote line items ──────────────────────────────────────────
   document.getElementById('mq-lines').addEventListener('click', function(e) {
@@ -1003,7 +1005,7 @@ function renderQuote() {
               '</div>' +
             '</div>' +
             '<p class="mq-success-sent">A confirmation has been sent to <strong>' + email + '</strong>. We\'ll follow up within one business day.</p>' +
-            '<p class="mq-success-email-note">Please allow 1–5 minutes for the confirmation email to appear in your inbox.</p>' +
+            '<p class="mq-success-email-note">Please allow 1–5 minutes for the confirmation email to arrive. If you don\'t see it, check your spam or junk folder.</p>' +
 
             '<div class="mq-success-summary">' +
               '<div class="mq-success-meta-row">' +
@@ -1257,8 +1259,9 @@ window.mqDownloadPDF = function() {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(160, 160, 160);
-    doc.text('Prices based on current material rates. Estimates valid for 30 days and confirmed within 1 business day.', margin, 283);
-    doc.text('mithrilplastics.com', pageW - margin, 283, { align: 'right' });
+    doc.text('Prices based on current material rates. Estimates valid for 30 days and confirmed within 1 business day.', margin, 281);
+    doc.text('If you don\'t receive a response, please check your spam or junk folder.', margin, 286);
+    doc.text('mithrilplastics.com', pageW - margin, 281, { align: 'right' });
 
     doc.save('Mithril-Quote-' + d.ref + '.pdf');
     if (btn) { btn.textContent = '⬇ Download PDF Summary'; btn.disabled = false; }
