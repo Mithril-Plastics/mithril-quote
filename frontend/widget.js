@@ -757,6 +757,7 @@ function renderHelpDecideQuote(eligible) {
         '<p class="mq-contact-heading">Where should we send your quote?</p>' +
         '<input class="mq-inp" id="mq-c-name"    type="text"  placeholder="Full name *"        autocomplete="name">' +
         '<input class="mq-inp" id="mq-c-email"   type="email" placeholder="Email address *"    autocomplete="email">' +
+        '<input class="mq-inp" id="mq-c-phone"   type="tel"   placeholder="Phone number (optional)" autocomplete="tel">' +
         '<input class="mq-inp" id="mq-c-company" type="text"  placeholder="Company (optional)" autocomplete="organization">' +
         '<textarea class="mq-inp mq-note" id="mq-c-note" placeholder="Tell us about your application — intended use, environment, finish requirements, budget constraints…"></textarea>' +
       '</div>' +
@@ -782,6 +783,7 @@ function renderHelpDecideQuote(eligible) {
     var errEl   = document.getElementById('mq-submit-err');
     var name    = nameEl.value.trim();
     var email   = emailEl.value.trim();
+    var phone   = document.getElementById('mq-c-phone').value.trim();
     var company = document.getElementById('mq-c-company').value.trim();
     var note    = document.getElementById('mq-c-note').value.trim();
 
@@ -799,6 +801,7 @@ function renderHelpDecideQuote(eligible) {
     var fd = new FormData();
     fd.append('name',     name);
     fd.append('email',    email);
+    if (phone)   fd.append('phone',   phone);
     if (company) fd.append('company', company);
     fd.append('process',  S.process);
     fd.append('material', 'Team recommendation (to be determined)');
@@ -891,6 +894,7 @@ function renderQuote() {
         '<p class="mq-contact-heading">Where should we send your quote?</p>' +
         '<input class="mq-inp" id="mq-c-name"    type="text"  placeholder="Full name *"        autocomplete="name">' +
         '<input class="mq-inp" id="mq-c-email"   type="email" placeholder="Email address *"    autocomplete="email">' +
+        '<input class="mq-inp" id="mq-c-phone"   type="tel"   placeholder="Phone number (optional)" autocomplete="tel">' +
         '<input class="mq-inp" id="mq-c-company" type="text"  placeholder="Company (optional)" autocomplete="organization">' +
         '<textarea class="mq-inp mq-note" id="mq-c-note" placeholder="Any details we should know? (print orientation, intended use, finish requirements…)"></textarea>' +
       '</div>' +
@@ -931,6 +935,7 @@ function renderQuote() {
     var errEl     = document.getElementById('mq-submit-err');
     var name    = nameEl.value.trim();
     var email   = emailEl.value.trim();
+    var phone   = document.getElementById('mq-c-phone').value.trim();
     var company = companyEl.value.trim();
     var note    = document.getElementById('mq-c-note').value.trim();
 
@@ -947,6 +952,7 @@ function renderQuote() {
     var fd = new FormData();
     fd.append('name',        name);
     fd.append('email',       email);
+    if (phone)   fd.append('phone',   phone);
     if (company) fd.append('company', company);
     fd.append('process',     S.process);
     fd.append('material',    S.materialLabel);
