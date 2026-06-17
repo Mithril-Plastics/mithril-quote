@@ -87,6 +87,7 @@
 .mq-drop-sub{font-size:15px;color:var(--mq-tx-2);line-height:1.6}
 .mq-drop strong{color:var(--mq-teal)}
 .mq-drop .mq-formats{font-size:13px;color:#7868a8;margin-top:14px;letter-spacing:.06em}
+.mq-disclosure{font-size:12px;color:#a8a8a8;margin-top:10px;line-height:1.5;text-align:center}
 .mq-drop-cta{display:inline-block;margin-top:22px;padding:12px 32px;border:1.5px solid var(--mq-teal-brd);border-radius:8px;background:var(--mq-teal-bg);color:var(--mq-teal);font-size:14px;font-weight:700;letter-spacing:.04em;transition:background .15s,border-color .15s}
 .mq-drop:hover .mq-drop-cta,.mq-drop.over .mq-drop-cta{background:var(--mq-teal-pil);border-color:var(--mq-teal)}
 
