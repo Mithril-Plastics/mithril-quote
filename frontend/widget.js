@@ -70,8 +70,8 @@ const MOCK_RATES = {
             'PP':0.99,'PA6':1.64,'PC-ABS':1.16,
             'PLA-CF':2.28,'ABS-CF':2.71,'PETG-CF':2.60,'PET-CF':3.50,'TPU-CF':3.14,'Nylon-CF':3.89,'ASA-CF':2.92,'Nylon-GF':3.46,'PC-CF':4.36,'PC-GF':3.78,
             'PLA-Aero':1.56,'ASA-Aero':1.98 } },
-  SLA: { machineRatePerHr: 6.50, cm3PerHr: 18,
-    mats: { 'Standard':0.40,'Clear':0.62,'High Temp':1.34,'ABS-Like':0.51,'Flexible':0.81 } },
+  SLA: { machineRatePerHr: 12.00, cm3PerHr: 6,
+    mats: { 'Standard':0.46,'Clear':3.20,'High Temp':6.50,'ABS-Like':2.40,'Flexible':4.00 } },
 };
 
 // Material densities (g/cm³) and FDM infill factor for weight estimation
