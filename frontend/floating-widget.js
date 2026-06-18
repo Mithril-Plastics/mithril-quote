@@ -25,7 +25,7 @@
   // In modal mode, skip the /instant-quote page to avoid conflicts.
   if (!mqInDom && window.location.pathname === '/instant-quote') return;
 
-  var CDN_WIDGET = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@a38d6fd/frontend';
+  var CDN_WIDGET = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@a172765/frontend';
   var CDN_THREE  = 'https://cdn.jsdelivr.net/npm/three@0.128.0';
 
   // ── Widget CSS ──────────────────────────────────────────────────────────────
