@@ -125,6 +125,7 @@
     +           '<p class="mq-formats">STL · OBJ · PLY · GLB · GLTF</p>'
     +           '<p class="mq-disclosure">⚠ Features smaller than 0.5 mm may be omitted or lose detail with FDM printing.</p>'
     +           '<p class="mq-disclosure">⚠ Minimum wall thickness of 1 mm is required for structural integrity.</p>'
+    +           '<p class="mq-disclosure">Depending on order size, delivery can be expected within a few days to a week.</p>'
     +         '</div>'
     +         '<div id="mq-upload-err"></div>'
     +       '</div>'
