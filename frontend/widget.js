@@ -745,7 +745,7 @@ function renderHelpDecideQuote(eligible) {
   }).join('\n');
 
   document.getElementById('mq-quote-body').innerHTML =
-    '<div class="mq-quote-meta"><strong>' + S.process + ' · Material: Team recommendation</strong><span class="mq-turnaround">⚡ Often ready within a week</span></div>' +
+    '<div class="mq-quote-meta"><strong>' + S.process + ' · Material: Team recommendation</strong></div>' +
     '<div class="mq-help-notice">' +
       '<strong>Our team will pick the right material</strong>' +
       'Share a bit about your application below and we\'ll recommend the best material for your needs, print settings, and budget — then follow up with a full quote within 1 business day.' +
@@ -851,7 +851,7 @@ function renderQuote() {
   }
 
   document.getElementById('mq-quote-body').innerHTML =
-    '<div class="mq-quote-meta"><strong>' + S.process + ' · ' + S.materialLabel + '</strong><span class="mq-turnaround">⚡ Often ready within a week</span></div>' +
+    '<div class="mq-quote-meta"><strong>' + S.process + ' · ' + S.materialLabel + '</strong></div>' +
     '<div class="mq-fl-header"><span>File</span><span>Unit price</span><span>Qty</span><span>Total</span></div>' +
     '<div id="mq-lines">' + items.map(function(it, i) {
       var fileSave = it.pct > 0 ? +((it.base - it.unit) * it.file.qty).toFixed(2) : 0;
