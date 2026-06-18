@@ -76,7 +76,8 @@
 .mq-step.active{color:var(--mq-teal);border-bottom-color:var(--mq-teal)}
 .mq-step.done{color:#9040d0;border-bottom-color:#9040d0;cursor:pointer}
 .mq-step.done:hover{color:#b060f0;border-bottom-color:#b060f0}
-.mq-heading{font-size:20px;font-weight:800;color:var(--mq-tx);margin-bottom:22px;letter-spacing:.02em}
+.mq-heading{font-size:20px;font-weight:800;color:var(--mq-tx);margin-bottom:10px;letter-spacing:.02em}
+.mq-subheading{font-size:14px;color:var(--mq-tx-2);text-align:center;margin-bottom:18px}
 
 /* ─── Drop zone ───────────────────────────────────────────────────────────── */
 .mq-drop{border:2.5px dashed rgba(86,5,145,.7);border-radius:14px;padding:60px 36px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s,box-shadow .2s;background:rgba(86,5,145,.05);position:relative}

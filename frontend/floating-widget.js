@@ -116,6 +116,7 @@
     +       '<input type="file" id="mq-input" accept=".stl,.obj,.ply,.glb,.gltf" multiple style="display:none">'
     +       '<div id="mq-empty-state">'
     +         '<p class="mq-heading">Upload your 3D files</p>'
+    +         '<p class="mq-subheading">Every part printed in-house by our team — no outsourcing, no surprises.</p>'
     +         '<div class="mq-drop" id="mq-zone">'
     +           '<span class="mq-drop-icon">📂</span>'
     +           '<p class="mq-drop-headline">Drag &amp; drop your files here</p>'
