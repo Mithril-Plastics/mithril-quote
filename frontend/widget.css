@@ -202,6 +202,7 @@
 /* ─── Quote screen ────────────────────────────────────────────────────────── */
 .mq-quote-meta{display:flex;justify-content:space-between;align-items:center;background:rgba(86,5,145,.08);border:1px solid rgba(86,5,145,.4);border-radius:11px;padding:16px 20px;margin-bottom:18px;font-size:14px;color:var(--mq-tx-2)}
 .mq-quote-meta strong{color:var(--mq-teal);font-size:15px}
+.mq-turnaround{color:var(--mq-teal);font-size:13px;font-weight:600;white-space:nowrap}
 .mq-fl-header{display:grid;grid-template-columns:1fr 110px 140px 72px;gap:12px;padding:8px 0 10px;border-bottom:1px solid rgba(86,5,145,.35);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#888}
 .mq-fl-header>*:not(:first-child){text-align:right}
 .mq-fl{display:grid;grid-template-columns:1fr 110px 140px 72px;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(86,5,145,.2)}
