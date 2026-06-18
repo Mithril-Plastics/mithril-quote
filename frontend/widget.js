@@ -1025,10 +1025,82 @@ function renderQuote() {
               (note ? '<div class="mq-success-note"><strong>Notes:</strong> ' + note + '</div>' : '') +
             '</div>' +
 
-            '<button class="mq-dl-btn" id="mq-dl-btn">⬇ Download PDF Summary</button>';
+            '<button class="mq-dl-btn" id="mq-dl-btn">⬇ Download PDF Summary</button>' +
+
+            '<div class="mq-ship-section" id="mq-ship-section">' +
+              '<button class="mq-ship-trigger" id="mq-ship-trigger">📦 I\'m ready to place my order</button>' +
+              '<div class="mq-ship-form" id="mq-ship-form" style="display:none">' +
+                '<p class="mq-ship-heading">Where are we shipping to?</p>' +
+                '<input class="mq-inp" id="mq-s-name"    type="text" placeholder="Full name *" value="' + esc(name) + '">' +
+                '<input class="mq-inp" id="mq-s-company" type="text" placeholder="Company" value="' + esc(company) + '">' +
+                '<input class="mq-inp" id="mq-s-addr1"   type="text" placeholder="Address line 1 *" autocomplete="address-line1">' +
+                '<input class="mq-inp" id="mq-s-addr2"   type="text" placeholder="Address line 2 (apt, suite…)" autocomplete="address-line2">' +
+                '<input class="mq-inp" id="mq-s-city"    type="text" placeholder="City *" autocomplete="address-level2">' +
+                '<div class="mq-ship-row">' +
+                  '<input class="mq-inp" id="mq-s-state" type="text" placeholder="State *" maxlength="2" autocomplete="address-level1">' +
+                  '<input class="mq-inp" id="mq-s-zip"   type="text" placeholder="ZIP *" maxlength="10" autocomplete="postal-code">' +
+                '</div>' +
+                '<div id="mq-ship-err"></div>' +
+                '<button class="mq-cta" id="mq-ship-btn">Confirm Order →</button>' +
+                '<p class="mq-footnote">We\'ll review your order and send an invoice to <strong>' + esc(email) + '</strong> before any charges are made.</p>' +
+              '</div>' +
+              '<div class="mq-ship-success" id="mq-ship-success" style="display:none">' +
+                '<p>✅ Order confirmed! We\'ll send an invoice to <strong>' + esc(email) + '</strong> shortly — no payment until you approve it.</p>' +
+              '</div>' +
+            '</div>';
 
           succEl.style.display = 'block';
           document.getElementById('mq-dl-btn').addEventListener('click', window.mqDownloadPDF);
+
+          document.getElementById('mq-ship-trigger').addEventListener('click', function() {
+            this.style.display = 'none';
+            document.getElementById('mq-ship-form').style.display = 'block';
+            document.getElementById('mq-s-addr1').focus();
+          });
+
+          document.getElementById('mq-ship-btn').addEventListener('click', function() {
+            var addr1El   = document.getElementById('mq-s-addr1');
+            var cityEl    = document.getElementById('mq-s-city');
+            var stateEl   = document.getElementById('mq-s-state');
+            var zipEl     = document.getElementById('mq-s-zip');
+            var shipErrEl = document.getElementById('mq-ship-err');
+            [addr1El, cityEl, stateEl, zipEl].forEach(function(el) { el.classList.remove('error'); });
+            shipErrEl.innerHTML = '';
+            var valid = true;
+            if (!addr1El.value.trim())  { addr1El.classList.add('error');  valid = false; }
+            if (!cityEl.value.trim())   { cityEl.classList.add('error');   valid = false; }
+            if (!stateEl.value.trim())  { stateEl.classList.add('error');  valid = false; }
+            if (!zipEl.value.trim())    { zipEl.classList.add('error');    valid = false; }
+            if (!valid) { shipErrEl.innerHTML = '<p class="mq-submit-err">Please fill in all required fields.</p>'; return; }
+            var shipBtn = this;
+            shipBtn.disabled = true; shipBtn.textContent = 'Submitting…';
+            var sfd = new FormData();
+            sfd.append('type',      'Shipping Info — Ready to Order');
+            sfd.append('quote_ref', quoteRef);
+            sfd.append('name',      document.getElementById('mq-s-name').value.trim());
+            sfd.append('email',     email);
+            sfd.append('company',   document.getElementById('mq-s-company').value.trim());
+            sfd.append('address',   [
+              addr1El.value.trim(),
+              document.getElementById('mq-s-addr2').value.trim(),
+              cityEl.value.trim() + ', ' + stateEl.value.trim().toUpperCase() + ' ' + zipEl.value.trim()
+            ].filter(Boolean).join(', '));
+            fetch(FORMSPREE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: sfd })
+              .then(function(res) { return res.json().catch(function() { return {}; }).then(function(d) { return { ok: res.ok, data: d }; }); })
+              .then(function(r) {
+                if (r.ok) {
+                  document.getElementById('mq-ship-form').style.display    = 'none';
+                  document.getElementById('mq-ship-success').style.display = 'block';
+                } else {
+                  shipBtn.disabled = false; shipBtn.textContent = 'Confirm Order →';
+                  shipErrEl.innerHTML = '<p class="mq-submit-err">' + esc(r.data.error || 'Submission failed — please try again.') + '</p>';
+                }
+              })
+              .catch(function() {
+                shipBtn.disabled = false; shipBtn.textContent = 'Confirm Order →';
+                shipErrEl.innerHTML = '<p class="mq-submit-err">Network error — please try again.</p>';
+              });
+          });
 
           // Formspree auto-reply handles the customer confirmation email.
         } else {
