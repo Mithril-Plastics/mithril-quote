@@ -215,6 +215,12 @@
 .mq-fl-qty{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
 .mq-fl-price{font-size:15px;font-weight:800;color:var(--mq-teal);text-align:right;white-space:nowrap}
 .mq-badge{background:var(--mq-teal-pil);color:var(--mq-teal);border:1px solid var(--mq-teal-brd);border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700}
+.mq-infill-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(86,5,145,.06);border:1px solid rgba(86,5,145,.3);border-radius:10px;padding:10px 14px;margin-bottom:16px}
+.mq-infill-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#888;white-space:nowrap;margin-right:2px}
+.mq-infill-opt{background:none;border:1px solid rgba(86,5,145,.35);border-radius:99px;color:var(--mq-tx-2);font-size:12px;font-weight:600;padding:4px 12px;cursor:pointer;font-family:'Khula',sans-serif;transition:color .15s,border-color .15s,background .15s;white-space:nowrap}
+.mq-infill-opt:hover{border-color:var(--mq-teal);color:var(--mq-teal)}
+.mq-infill-opt.active{border-color:var(--mq-teal);color:var(--mq-teal);background:var(--mq-teal-pil)}
+.mq-infill-opt strong{font-weight:800}
 .mq-discount-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--mq-teal-bg);border:1px solid var(--mq-teal-brd);border-radius:10px;padding:10px 14px;margin:4px 0 16px}
 .mq-discount-bar-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#a8a8a8;white-space:nowrap;margin-right:2px}
 .mq-discount-tier{font-size:12px;font-weight:700;color:var(--mq-tx-2);padding:3px 10px;border-radius:99px;border:1px solid rgba(149,100,220,.55);white-space:nowrap;transition:color .15s,border-color .15s,background .15s}

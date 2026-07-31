@@ -61,6 +61,13 @@ const QTY_BREAKS = [
   { min: 50, max: null, pct: 28 },
 ];
 
+const INFILL_OPTS = [
+  { pct: 15, label: 'Light',    hint: 'Non-structural or decorative parts' },
+  { pct: 20, label: 'Standard', hint: 'Everyday parts' },
+  { pct: 35, label: 'Balanced', hint: 'General purpose — recommended' },
+  { pct: 50, label: 'Strong',   hint: 'Load-bearing or functional parts' },
+];
+
 // Material rates are in $/cm³ of SOLID material.
 // Pricing formula applies fillFactor so actual charge scales with infill density:
 //   base = volume × fillFactor × material_rate  +  (volume / cm3PerHr) × machineRatePerHr
@@ -105,6 +112,7 @@ const S = {
   quote: null,
   globalQty: 1,
   quoteItems: null, // live reference to renderQuote's items array for order total updates
+  infill: 35,
 };
 
 // ── SESSION PERSISTENCE ───────────────────────────────────────────────────────
@@ -705,7 +713,7 @@ var MIN_PART_PRICE = 5.00; // minimum base price per part
 
 function calcLine(file) {
   var cfg        = MOCK_RATES[S.process];
-  var fillFactor = DENSITIES[S.process].fillFactor;
+  var fillFactor = S.process === 'FDM' ? S.infill / 100 : DENSITIES[S.process].fillFactor;
   var rate       = cfg.mats[S.material] || 0.20;
   var hrs        = file.volume / cfg.cm3PerHr;
   var calculated = file.volume * fillFactor * rate + hrs * cfg.machineRatePerHr;
@@ -851,7 +859,17 @@ function renderQuote() {
   }
 
   document.getElementById('mq-quote-body').innerHTML =
-    '<div class="mq-quote-meta"><strong>' + S.process + ' · ' + S.materialLabel + '</strong></div>' +
+    '<div class="mq-quote-meta"><strong id="mq-meta-txt">' + S.process + ' · ' + S.materialLabel + (S.process === 'FDM' ? ' · ' + S.infill + '% infill' : '') + '</strong></div>' +
+    (S.process === 'FDM' ?
+      '<div class="mq-infill-bar">' +
+        '<span class="mq-infill-label">Infill density</span>' +
+        INFILL_OPTS.map(function(o) {
+          return '<button class="mq-infill-opt' + (o.pct === S.infill ? ' active' : '') + '" data-pct="' + o.pct + '" title="' + esc(o.hint) + '">' +
+            '<strong>' + o.pct + '%</strong> ' + o.label +
+          '</button>';
+        }).join('') +
+      '</div>'
+    : '') +
     '<div class="mq-fl-header"><span>File</span><span>Unit price</span><span>Qty</span><span>Total</span></div>' +
     '<div id="mq-lines">' + items.map(function(it, i) {
       var fileSave = it.pct > 0 ? +((it.base - it.unit) * it.file.qty).toFixed(2) : 0;
@@ -928,6 +946,33 @@ function renderQuote() {
     }
   });
 
+  // ── Infill density selector ───────────────────────────────────────────────────
+  if (S.process === 'FDM') {
+    document.querySelector('.mq-infill-bar').addEventListener('click', function(e) {
+      var btn = e.target.closest('.mq-infill-opt');
+      if (!btn) return;
+      S.infill = +btn.dataset.pct;
+      document.querySelectorAll('.mq-infill-opt').forEach(function(b) { b.classList.toggle('active', b === btn); });
+      items.forEach(function(it, i) {
+        var fresh = calcLine(it.file);
+        it.base = fresh.base; it.unit = fresh.unit; it.pct = fresh.pct; it.lineTotal = fresh.lineTotal;
+        var row = document.querySelector('#mq-lines .mq-fl[data-idx="' + i + '"]');
+        row.querySelector('.mq-fl-vol').textContent = '$' + it.unit.toFixed(2) + ' / ea';
+        row.querySelector('.mq-line-total').textContent = '$' + it.lineTotal.toFixed(2);
+        var saveEl = row.querySelector('.mq-fl-filesave');
+        if (saveEl) saveEl.textContent = it.pct > 0 ? '−' + it.pct + '% · saving $' + +((it.base - it.unit) * it.file.qty).toFixed(2) : '';
+        var badge = row.querySelector('.mq-badge');
+        if (it.pct > 0) {
+          if (!badge) { badge = document.createElement('span'); badge.className = 'mq-badge'; row.querySelector('.mq-fl-qty').appendChild(badge); }
+          badge.textContent = '−' + it.pct + '%';
+        } else if (badge) { badge.remove(); }
+      });
+      document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
+      var metaTxt = document.getElementById('mq-meta-txt');
+      if (metaTxt) metaTxt.textContent = S.process + ' · ' + S.materialLabel + ' · ' + S.infill + '% infill';
+      renderDiscountBar(items);
+    });
+  }
 
   // ── Quote form submission ─────────────────────────────────────────────────────
   document.getElementById('mq-req-btn').addEventListener('click', function() {
@@ -958,6 +1003,7 @@ function renderQuote() {
     if (company) fd.append('company', company);
     fd.append('process',     S.process);
     fd.append('material',    S.materialLabel);
+    if (S.process === 'FDM') fd.append('infill', S.infill + '%');
     fd.append('quote',       filesSummary());
     fd.append('parts_total', '$' + grandTotal().toFixed(2));
     if (note) fd.append('note', note);
@@ -987,6 +1033,7 @@ function renderQuote() {
             company:  company,
             process:  S.process,
             material: S.materialLabel,
+            infill:   S.process === 'FDM' ? S.infill : null,
             total:    grandTotal().toFixed(2),
             note:     note,
             items:    items.map(function(it) {
@@ -1011,6 +1058,7 @@ function renderQuote() {
               '<div class="mq-success-meta-row">' +
                 '<span><label>Process</label>' + S.process + '</span>' +
                 '<span><label>Material</label>' + S.materialLabel + '</span>' +
+                (S.process === 'FDM' ? '<span><label>Infill</label>' + S.infill + '%</span>' : '') +
               '</div>' +
               '<div class="mq-success-fl-head"><span>File</span><span>Qty</span><span>Unit</span><span>Total</span></div>' +
               items.map(function(it) {
