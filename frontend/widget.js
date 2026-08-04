@@ -709,7 +709,8 @@ function discountPct(qty) {
   return t ? t.pct : 0;
 }
 
-var MIN_PART_PRICE = 5.00; // minimum base price per part
+var MIN_PART_PRICE = 5.00;  // minimum base price per part
+var SHIPPING_BASE  = 6.00;  // flat shipping added to every order
 
 function calcLine(file) {
   var cfg        = MOCK_RATES[S.process];
@@ -903,7 +904,9 @@ function renderQuote() {
       '</div>';
     })() +
 
-    '<div class="mq-grand-row"><span>Parts Total</span><span id="mq-grand">$' + grandTotal().toFixed(2) + '</span></div>' +
+    '<div class="mq-grand-row mq-parts-subtotal-row"><span>Parts Subtotal</span><span id="mq-grand">$' + grandTotal().toFixed(2) + '</span></div>' +
+    '<div class="mq-shipping-row"><span>Shipping</span><span>$' + SHIPPING_BASE.toFixed(2) + '</span></div>' +
+    '<div class="mq-grand-row mq-order-total-row"><span>Order Total</span><span id="mq-order-total">$' + (grandTotal() + SHIPPING_BASE).toFixed(2) + '</span></div>' +
 
     /* ── Form body — hidden as a unit on success ── */
     '<div id="mq-form-body">' +
@@ -968,6 +971,8 @@ function renderQuote() {
         } else if (badge) { badge.remove(); }
       });
       document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
+      var otEl2 = document.getElementById('mq-order-total');
+      if (otEl2) otEl2.textContent = '$' + (grandTotal() + SHIPPING_BASE).toFixed(2);
       var metaTxt = document.getElementById('mq-meta-txt');
       if (metaTxt) metaTxt.textContent = S.process + ' · ' + S.materialLabel + ' · ' + S.infill + '% infill';
       renderDiscountBar(items);
@@ -1005,7 +1010,9 @@ function renderQuote() {
     fd.append('material',    S.materialLabel);
     if (S.process === 'FDM') fd.append('infill', S.infill + '%');
     fd.append('quote',       filesSummary());
-    fd.append('parts_total', '$' + grandTotal().toFixed(2));
+    fd.append('parts_subtotal', '$' + grandTotal().toFixed(2));
+    fd.append('shipping',       '$' + SHIPPING_BASE.toFixed(2));
+    fd.append('order_total',    '$' + (grandTotal() + SHIPPING_BASE).toFixed(2));
     if (note) fd.append('note', note);
     eligible.forEach(function(f) { if (f.originalFile) fd.append('attachment', f.originalFile, f.fileName); });
 
@@ -1033,8 +1040,10 @@ function renderQuote() {
             company:  company,
             process:  S.process,
             material: S.materialLabel,
-            infill:   S.process === 'FDM' ? S.infill : null,
-            total:    grandTotal().toFixed(2),
+            infill:    S.process === 'FDM' ? S.infill : null,
+            subtotal:  grandTotal().toFixed(2),
+            shipping:  SHIPPING_BASE.toFixed(2),
+            total:     (grandTotal() + SHIPPING_BASE).toFixed(2),
             note:     note,
             items:    items.map(function(it) {
               return { fileName: it.file.fileName, volume: it.file.volume,
@@ -1069,7 +1078,9 @@ function renderQuote() {
                   '<span>$' + it.lineTotal.toFixed(2) + (it.pct > 0 ? '<em> −' + it.pct + '%</em>' : '') + '</span>' +
                 '</div>';
               }).join('') +
-              '<div class="mq-success-total-row"><span>Parts Total</span><span>$' + grandTotal().toFixed(2) + '</span></div>' +
+              '<div class="mq-success-subtotal-row"><span>Parts Subtotal</span><span>$' + grandTotal().toFixed(2) + '</span></div>' +
+              '<div class="mq-success-shipping-row"><span>Shipping</span><span>$' + SHIPPING_BASE.toFixed(2) + '</span></div>' +
+              '<div class="mq-success-total-row"><span>Order Total</span><span>$' + (grandTotal() + SHIPPING_BASE).toFixed(2) + '</span></div>' +
               (note ? '<div class="mq-success-note"><strong>Notes:</strong> ' + note + '</div>' : '') +
             '</div>' +
 
@@ -1188,6 +1199,8 @@ function renderQuote() {
       }
     }
     document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
+    var otEl = document.getElementById('mq-order-total');
+    if (otEl) otEl.textContent = '$' + (grandTotal() + SHIPPING_BASE).toFixed(2);
     renderDiscountBar(items);
   }
 }
