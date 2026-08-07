@@ -45,7 +45,9 @@ const MATERIALS = {
   SLA: [
     // ── Standard ──────────────────────────────────────────────────────────────
     { key: 'Standard',  label: 'Standard Resin',  group: 'Standard', cost: 2, desc: 'Smooth finish and fine detail. Great for visual prototypes and display models.' },
-    { key: 'ABS-Like',  label: 'ABS-Like Resin',  group: 'Standard', cost: 2, desc: 'Tough and impact-resistant. Great for functional prototypes and snap-fit housings.' },
+    { key: 'ABS-Like',   label: 'ABS-Like Resin',   group: 'Standard', cost: 2, desc: 'Tough and impact-resistant. Great for functional prototypes and snap-fit housings.' },
+    { key: 'Nylon-Like', label: 'Nylon-Like Resin', group: 'Standard', cost: 2, desc: 'Simulates nylon toughness with some flexibility. Good for snap-fits, living hinges, and durable functional parts.' },
+    { key: 'PC-Like',    label: 'PC-Like Resin',    group: 'Standard', cost: 2, desc: 'Simulates polycarbonate rigidity and impact resistance. Great for engineering prototypes and tough enclosures.' },
     // ── Specialty ─────────────────────────────────────────────────────────────
     { key: 'Clear',     label: 'Clear Resin',     group: 'Specialty', cost: 3, desc: 'Optically transparent when finished. Best for lenses, fluid channels, and displays.' },
     { key: 'Flexible',  label: 'Flexible Resin',  group: 'Specialty', cost: 3, desc: 'Rubber-like flexibility and durability. For seals, grips, and soft prototypes.' },
@@ -78,7 +80,7 @@ const MOCK_RATES = {
             'PLA-CF':2.28,'ABS-CF':2.71,'PETG-CF':2.60,'PET-CF':3.50,'TPU-CF':3.14,'Nylon-CF':3.89,'ASA-CF':2.92,'Nylon-GF':3.46,'PC-CF':4.36,'PC-GF':3.78,
             'PLA-Aero':1.56,'ASA-Aero':1.98 } },
   SLA: { machineRatePerHr: 12.00, cm3PerHr: 6,
-    mats: { 'Standard':0.46,'Clear':3.20,'High Temp':6.50,'ABS-Like':2.40,'Flexible':4.00 } },
+    mats: { 'Standard':0.46,'Clear':3.20,'High Temp':6.50,'ABS-Like':2.40,'Flexible':4.00,'Nylon-Like':0.86,'PC-Like':1.03 } },
 };
 
 // Material densities (g/cm³) and FDM infill factor for weight estimation
@@ -89,7 +91,7 @@ const DENSITIES = {
             'PLA-CF':1.18,'ABS-CF':1.12,'PETG-CF':1.20,'PET-CF':1.30,'TPU-CF':1.18,'Nylon-CF':1.10,'ASA-CF':1.12,'Nylon-GF':1.15,'PC-CF':1.25,'PC-GF':1.32,
             'PLA-Aero':0.65,'ASA-Aero':0.65 } },
   SLA: { fillFactor: 1.0,
-    mats: { 'Standard':1.10,'Clear':1.12,'High Temp':1.14,'ABS-Like':1.08,'Flexible':1.15 } },
+    mats: { 'Standard':1.10,'Clear':1.12,'High Temp':1.14,'ABS-Like':1.08,'Flexible':1.15,'Nylon-Like':1.05,'PC-Like':1.18 } },
 };
 
 
