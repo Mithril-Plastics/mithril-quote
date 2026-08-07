@@ -46,8 +46,8 @@ const MATERIALS = {
     // ── Standard ──────────────────────────────────────────────────────────────
     { key: 'Standard',  label: 'Standard Resin',  group: 'Standard', cost: 2, desc: 'Smooth finish and fine detail. Great for visual prototypes and display models.' },
     { key: 'ABS-Like',   label: 'ABS-Like Resin',   group: 'Standard', cost: 2, desc: 'Tough and impact-resistant. Great for functional prototypes and snap-fit housings.' },
-    { key: 'Nylon-Like', label: 'Nylon-Like Resin', group: 'Standard', cost: 2, desc: 'Simulates nylon toughness with some flexibility. Good for snap-fits, living hinges, and durable functional parts.' },
-    { key: 'PC-Like',    label: 'PC-Like Resin',    group: 'Standard', cost: 2, desc: 'Simulates polycarbonate rigidity and impact resistance. Great for engineering prototypes and tough enclosures.' },
+    { key: 'Nylon-Like', label: 'Nylon-Like Resin', group: 'Standard', cost: 2, desc: 'More flexible than standard resins with strong wear and abrasion resistance. Ideal for snap-fits, living hinges, bushings, and parts subject to repeated stress.' },
+    { key: 'PC-Like',    label: 'PC-Like Resin',    group: 'Standard', cost: 2, desc: 'Combines high impact strength with rigidity and thermal stability. Built for tough enclosures, structural brackets, and engineering prototypes that need to hold up under load.' },
     // ── Specialty ─────────────────────────────────────────────────────────────
     { key: 'Clear',     label: 'Clear Resin',     group: 'Specialty', cost: 3, desc: 'Optically transparent when finished. Best for lenses, fluid channels, and displays.' },
     { key: 'Flexible',  label: 'Flexible Resin',  group: 'Specialty', cost: 3, desc: 'Rubber-like flexibility and durability. For seals, grips, and soft prototypes.' },
