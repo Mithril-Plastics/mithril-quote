@@ -139,7 +139,7 @@
     +         '<div class="mq-sel-row"><span class="mq-selected-count" id="mq-sel-count">0 models selected</span></div>'
     +         '<div class="mq-controls-bar">'
     +           '<div class="mq-controls-left">'
-    +             '<span class="mq-unit-label">File unit: <strong>Millimeters (mm)</strong></span>'
+    +             '<span class="mq-unit-label">File units: <strong>set per model below</strong> — check each card</span>'
     +             '<div class="mq-global-qty">'
     +               '<span class="mq-global-qty-label">Quantity:</span>'
     +               '<div class="mq-stepper">'

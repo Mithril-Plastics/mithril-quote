@@ -118,8 +118,8 @@
 .mq-stepper input::-webkit-inner-spin-button,.mq-stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 
 /* ─── File cards ──────────────────────────────────────────────────────────── */
-.mq-cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:32px}
-.mq-card{background:rgba(86,5,145,.05);border:1px solid rgba(86,5,145,.35);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:0;transition:border-color .15s,background .15s}
+.mq-cards-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-bottom:32px}
+.mq-card{min-width:0;background:rgba(86,5,145,.05);border:1px solid rgba(86,5,145,.35);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:0;transition:border-color .15s,background .15s}
 .mq-card.selected{border-color:var(--mq-teal-brd);background:var(--mq-teal-bg)}
 .mq-card-header{display:flex;align-items:center;gap:14px;margin-bottom:18px}
 .mq-card-name{flex:1;font-size:14px;font-weight:700;color:var(--mq-tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -129,9 +129,16 @@
 .mq-card-thumb{width:88px;height:88px;flex-shrink:0;background:var(--mq-bg-thumb);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid rgba(86,5,145,.25)}
 .mq-card-thumb img{width:100%;height:100%;object-fit:contain}
 .mq-card-thumb-placeholder{font-size:28px}
-.mq-card-info{flex:1;display:flex;flex-direction:column;gap:7px;padding-top:4px}
+.mq-card-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;padding-top:4px}
 .mq-card-dims{font-size:13px;color:var(--mq-teal);letter-spacing:.01em}
 .mq-card-vol{font-size:13px;color:#888}
+.mq-card-dims-in{font-size:12px;color:var(--mq-tx-3);margin-top:-3px}
+.mq-unit-pick{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mq-tx-2);margin-top:2px}
+.mq-unit-sel{flex:1;min-width:0;background:var(--mq-stp-inp);color:var(--mq-tx);border:1px solid rgba(86,5,145,.4);border-radius:6px;font-size:12px;padding:4px 6px;font-family:inherit;cursor:pointer}
+.mq-unit-sel:focus{outline:2px solid var(--mq-teal);outline-offset:1px}
+.mq-unit-hint{background:rgba(255,180,50,.1);border:1px solid rgba(255,180,50,.45);color:var(--mq-tx);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.5;margin-bottom:18px}
+.mq-unit-hint-btn{display:inline-block;margin-top:6px;background:var(--mq-teal);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.mq-unit-hint-btn:hover{filter:brightness(1.1)}
 .mq-card-footer{display:flex;align-items:center;border-top:1px solid rgba(86,5,145,.2);padding-top:16px}
 .mq-card-footer .mq-stepper button{width:32px;height:32px;font-size:16px}
 .mq-card-footer .mq-stepper input{width:38px;height:32px;font-size:14px}
@@ -315,7 +322,7 @@
   .mq-brand-header{padding:26px 24px}
   .mq-step{font-size:11px;padding:14px 4px;letter-spacing:.02em}
   .mq-card{padding:16px}
-  .mq-cards-grid{grid-template-columns:1fr}
+  .mq-cards-grid{grid-template-columns:minmax(0,1fr)}
   .mq-controls-bar{flex-direction:column;align-items:flex-start}
   .mq-controls-right{width:100%;justify-content:flex-end}
   .mq-cta{padding:18px 36px}

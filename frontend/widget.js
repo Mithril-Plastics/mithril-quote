@@ -107,7 +107,7 @@ function esc(str) {
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 const S = {
-  files: [],     // { fileName, bbox, volume, fdmFits, slaFits, qty, selected, thumbnail, geometry, originalFile }
+  files: [],     // { fileName, ext, unit, rawBbox, rawVolume, bbox(mm), volume(cm³), hint, fdmFits, slaFits, qty, selected, thumbnail, geometry, originalFile }
   process: null,
   material: null,
   materialLabel: '',
@@ -242,9 +242,24 @@ function renderCards() {
           '<div class="mq-card-thumb">' + thumbHtml + '</div>' +
           '<div class="mq-card-info">' +
             '<div class="mq-card-dims">' + f.bbox.x + ' × ' + f.bbox.y + ' × ' + f.bbox.z + ' mm</div>' +
+            '<div class="mq-card-dims-in">' + inch(f.bbox.x) + ' × ' + inch(f.bbox.y) + ' × ' + inch(f.bbox.z) + ' in</div>' +
             '<div class="mq-card-vol">' + volMm3 + ' mm³</div>' +
+            '<label class="mq-unit-pick">File unit ' +
+              '<select class="mq-unit-sel" data-unit-sel="' + i + '" aria-label="Units used in ' + esc(f.fileName) + '">' +
+                Object.keys(UNITS).map(function(u) {
+                  return '<option value="' + u + '"' + (u === f.unit ? ' selected' : '') + '>' + UNITS[u].label + ' (' + UNITS[u].name + ')</option>';
+                }).join('') +
+              '</select>' +
+            '</label>' +
           '</div>' +
         '</div>' +
+
+        /* ── Unit sanity hint (only when the size looks wrong) ── */
+        (f.hint
+          ? '<div class="mq-unit-hint" role="alert">' + esc(f.hint.msg) +
+              ' <button type="button" class="mq-unit-hint-btn" data-unit-switch="' + i + '" data-unit-to="' + f.hint.suggest + '">Switch to ' + UNITS[f.hint.suggest].name + '</button>' +
+            '</div>'
+          : '') +
 
         /* ── Row 3: qty stepper ── */
         '<div class="mq-card-footer">' +
@@ -268,6 +283,13 @@ function renderCards() {
       card.classList.toggle('selected', cb.checked);
       updateHeader();
     });
+  });
+
+  grid.querySelectorAll('[data-unit-sel]').forEach(function(sel) {
+    sel.addEventListener('change', function() { setFileUnit(+sel.dataset.unitSel, sel.value); });
+  });
+  grid.querySelectorAll('[data-unit-switch]').forEach(function(btn) {
+    btn.addEventListener('click', function() { setFileUnit(+btn.dataset.unitSwitch, btn.dataset.unitTo); });
   });
 
   grid.querySelectorAll('[data-del]').forEach(function(btn) {
@@ -296,6 +318,14 @@ function renderCards() {
   });
 
   updateHeader();
+}
+
+function inch(mm) { return +(mm / 25.4).toFixed(2); }
+
+function setFileUnit(idx, unit) {
+  if (!S.files[idx] || !UNITS[unit]) return;
+  applyUnit(S.files[idx], unit);
+  renderCards();
 }
 
 function applyCardQty(idx, val) {
@@ -397,17 +427,82 @@ function computeVolumeFromGeo(geo) {
     for (var i = 0; i < pos.count; i += 3) tri(i, i+1, i+2);
   }
 
+  // RAW values: volume in cm³ and bbox in mm *as if the file were in mm*.
+  // Not rounded here — applyUnit() rescales by the file's real unit first,
+  // then rounds, so tiny (inch/meter-scale) models don't lose precision.
   return {
-    volume: +(Math.abs(vol) / 6000).toFixed(4),
-    bbox: { x:+(maxX-minX).toFixed(2), y:+(maxY-minY).toFixed(2), z:+(maxZ-minZ).toFixed(2) },
+    volume: Math.abs(vol) / 6000,
+    bbox: { x: maxX-minX, y: maxY-minY, z: maxZ-minZ },
   };
 }
 
-function extractFirstGeometry(object) {
-  var geo = null;
-  object.traverse(function(child) { if (!geo && child.isMesh && child.geometry) geo = child.geometry; });
-  if (!geo) throw new Error('No geometry found');
+// Merge every mesh in an OBJ / glTF scene into one geometry, applying each
+// mesh's world transform. (Previously only the first mesh was read, so
+// multi-body files were under-quoted.)
+function extractMergedGeometry(object) {
+  object.updateMatrixWorld(true);
+  var chunks = [], total = 0;
+  var v = new THREE.Vector3();
+  object.traverse(function(child) {
+    if (!child.isMesh || !child.geometry || !child.geometry.attributes.position) return;
+    var pos = child.geometry.attributes.position;
+    var idx = child.geometry.index;
+    var n   = idx ? idx.count : pos.count;
+    var arr = new Float32Array(n * 3);
+    var flip = child.matrixWorld.determinant() < 0; // mirrored mesh → reverse winding
+    for (var i = 0; i < n; i++) {
+      var src = i;
+      if (flip) { var r = i % 3; src = i - r + (r === 0 ? 0 : (r === 1 ? 2 : 1)); }
+      v.fromBufferAttribute(pos, idx ? idx.getX(src) : src).applyMatrix4(child.matrixWorld);
+      arr[i*3] = v.x; arr[i*3+1] = v.y; arr[i*3+2] = v.z;
+    }
+    chunks.push(arr); total += arr.length;
+  });
+  if (!total) throw new Error('No geometry found');
+  var merged = new Float32Array(total), off = 0;
+  chunks.forEach(function(c) { merged.set(c, off); off += c.length; });
+  var geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(merged, 3));
   return geo;
+}
+
+// ── UNITS ────────────────────────────────────────────────────────────────────
+// scale = millimetres per file unit.
+const UNITS = {
+  mm: { label: 'mm', name: 'millimeters', scale: 1    },
+  cm: { label: 'cm', name: 'centimeters', scale: 10   },
+  in: { label: 'in', name: 'inches',      scale: 25.4 },
+  m:  { label: 'm',  name: 'meters',      scale: 1000 },
+};
+
+function defaultUnitFor(ext) {
+  // glTF/GLB are defined in meters by spec; everything else is conventionally mm.
+  return (ext === 'glb' || ext === 'gltf') ? 'm' : 'mm';
+}
+
+// Returns { suggest, msg } when the chosen unit looks wrong, else null.
+function unitHint(f) {
+  var maxRaw = Math.max(f.rawBbox.x, f.rawBbox.y, f.rawBbox.z);
+  var maxMm  = maxRaw * UNITS[f.unit].scale;
+  if (f.unit === 'mm' && maxRaw < 25) {
+    return { suggest: 'in',
+      msg: 'This part reads as only ' + f.bbox.x + ' × ' + f.bbox.y + ' × ' + f.bbox.z + ' mm. If your file is in inches, switch the unit.' };
+  }
+  if ((f.unit === 'in' || f.unit === 'm' || f.unit === 'cm') && maxMm > 1000) {
+    return { suggest: 'mm',
+      msg: 'That makes this part over 1 meter long. If your file is in millimeters, switch the unit.' };
+  }
+  return null;
+}
+
+function applyUnit(f, unit) {
+  var s = UNITS[unit].scale;
+  f.unit   = unit;
+  f.bbox   = { x: +(f.rawBbox.x * s).toFixed(2), y: +(f.rawBbox.y * s).toFixed(2), z: +(f.rawBbox.z * s).toFixed(2) };
+  f.volume = +(f.rawVolume * s * s * s).toFixed(4);
+  f.fdmFits = fitsIn(f.bbox, 'FDM');
+  f.slaFits = fitsIn(f.bbox, 'SLA');
+  f.hint    = unitHint(f);
 }
 
 function fitsIn(bbox, process) {
@@ -429,7 +524,7 @@ function loadGeometry(buffer, ext) {
       return Promise.resolve(new THREE.PLYLoader().parse(buffer));
     case 'obj': {
       var text = new TextDecoder().decode(buffer);
-      return Promise.resolve(extractFirstGeometry(new THREE.OBJLoader().parse(text)));
+      return Promise.resolve(extractMergedGeometry(new THREE.OBJLoader().parse(text)));
     }
     case 'glb':
     case 'gltf': {
@@ -438,7 +533,7 @@ function loadGeometry(buffer, ext) {
       return new Promise(function(res, rej) {
         new THREE.GLTFLoader().load(url, function(gltf) {
           URL.revokeObjectURL(url);
-          res(extractFirstGeometry(gltf.scene));
+          res(extractMergedGeometry(gltf.scene));
         }, undefined, rej);
       });
     }
@@ -454,18 +549,19 @@ function parseOneFile(file) {
     return loadGeometry(buffer, ext);
   }).then(function(geometry) {
     var result = computeVolumeFromGeo(geometry);
-    return {
+    var f = {
       fileName: file.name,
-      bbox: result.bbox,
-      volume: result.volume,
-      fdmFits: fitsIn(result.bbox, 'FDM'),
-      slaFits: fitsIn(result.bbox, 'SLA'),
+      ext: ext,
+      rawBbox: result.bbox,      // as if mm — see computeVolumeFromGeo
+      rawVolume: result.volume,  // cm³ as if mm
       qty: S.globalQty,
       selected: true,
       thumbnail: null,
       geometry: geometry,
       originalFile: file,
     };
+    applyUnit(f, defaultUnitFor(ext));
+    return f;
   });
 }
 
