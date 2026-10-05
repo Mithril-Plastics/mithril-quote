@@ -259,13 +259,26 @@
 
   // ── Open / close functions (modal mode only) ────────────────────────────────
   if (!mqInDom) {
+    // Analytics: push to GTM's dataLayer. Counts/choices only — no personal data.
+    function mqPush(name, extra) {
+      try {
+        var e = { event: 'mq_' + name, mq_source: 'modal', mq_page: location.pathname };
+        for (var k in (extra || {})) e[k] = extra[k];
+        (window.dataLayer = window.dataLayer || []).push(e);
+      } catch (err) {}
+    }
     window.mqOpenModal = function () {
       document.getElementById('mq-modal-overlay').classList.add('mq-open');
       document.body.style.overflow = 'hidden';
+      mqPush('modal_open');
     };
     window.mqCloseModal = function () {
-      document.getElementById('mq-modal-overlay').classList.remove('mq-open');
+      var ov = document.getElementById('mq-modal-overlay');
+      var wasOpen = ov.classList.contains('mq-open');   // Escape fires this even when closed
+      ov.classList.remove('mq-open');
       document.body.style.overflow = '';
+      // mq_last_step = how far they got before closing (set by widget.js)
+      if (wasOpen) mqPush('modal_close', { mq_last_step: window.MQ_LAST || 'upload' });
     };
     window.mqOverlayClick = function (e) {
       if (e.target === document.getElementById('mq-modal-overlay')) mqCloseModal();

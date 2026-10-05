@@ -117,6 +117,47 @@ const S = {
   infill: 35,
 };
 
+// ── ANALYTICS ────────────────────────────────────────────────────────────────
+// Pushes events to window.dataLayer. Google Tag Manager (installed site-wide)
+// reads them and routes to GA4 / Bing / Ads — this file never talks to a
+// vendor directly, so consent mode and the cookie banner still apply.
+//
+// PRIVACY RULE: events carry counts, choices and totals ONLY. Never add file
+// names, names, emails, phone numbers, company names or free-text notes.
+var MQ_SID  = Math.random().toString(36).slice(2, 10);   // per page-load, anonymous
+var MQ_T0   = Date.now();
+var MQ_SRC  = document.getElementById('mq-modal-overlay') ? 'modal' : 'page';
+var MQ_SEEN = {};                                          // steps already viewed
+var MQ_LAST = 'upload';                                     // most recent step (read by floating-widget.js on close)
+function mqTrack(name, params) {
+  try {
+    var e = {
+      event: 'mq_' + name,
+      mq_source: MQ_SRC,                                   // 'page' = /instant-quote, 'modal' = floating button
+      mq_session: MQ_SID,
+      mq_elapsed_s: Math.round((Date.now() - MQ_T0) / 1000),
+    };
+    for (var k in (params || {})) if (Object.prototype.hasOwnProperty.call(params, k)) e[k] = params[k];
+    (window.dataLayer = window.dataLayer || []).push(e);
+  } catch (err) { /* tracking must never break the quote flow */ }
+}
+
+// Campaign source for the lead email (utm_*, gclid, msclkid). Uses what
+// mithril-track.js stored for this tab, else whatever is in the current URL.
+// Business data about the ad click — contains nothing about the visitor.
+function mqAttribution(fd) {
+  try {
+    var a = {};
+    try { a = JSON.parse(sessionStorage.getItem('mith_attr') || '{}') || {}; } catch (e) {}
+    var q = new URLSearchParams(location.search);
+    ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','msclkid'].forEach(function(k) {
+      if (!a[k] && q.get(k)) a[k] = q.get(k).slice(0, 120);
+    });
+    Object.keys(a).forEach(function(k) { if (a[k]) fd.append('src_' + k, a[k]); });
+    fd.append('src_page', location.pathname);
+  } catch (e) {}
+}
+
 // ── SESSION PERSISTENCE ───────────────────────────────────────────────────────
 function saveSession() {
   try {
@@ -137,6 +178,11 @@ function show(id) {
   document.querySelectorAll('.mq-screen').forEach(function(el) { el.classList.remove('on'); });
   document.getElementById('mq-' + id).classList.add('on');
   var n = STEP_MAP[id];
+  if (id !== 'loading') {
+    mqTrack('step', { mq_step: id, mq_first_view: !MQ_SEEN[id] });
+    MQ_SEEN[id] = true;
+    MQ_LAST = id;
+  }
   [1,2,3,4].forEach(function(i) {
     var el = document.getElementById('mq-s' + i);
     el.classList.remove('active', 'done');
@@ -286,10 +332,10 @@ function renderCards() {
   });
 
   grid.querySelectorAll('[data-unit-sel]').forEach(function(sel) {
-    sel.addEventListener('change', function() { setFileUnit(+sel.dataset.unitSel, sel.value); });
+    sel.addEventListener('change', function() { setFileUnit(+sel.dataset.unitSel, sel.value, 'dropdown'); });
   });
   grid.querySelectorAll('[data-unit-switch]').forEach(function(btn) {
-    btn.addEventListener('click', function() { setFileUnit(+btn.dataset.unitSwitch, btn.dataset.unitTo); });
+    btn.addEventListener('click', function() { setFileUnit(+btn.dataset.unitSwitch, btn.dataset.unitTo, 'hint'); });
   });
 
   grid.querySelectorAll('[data-del]').forEach(function(btn) {
@@ -322,8 +368,9 @@ function renderCards() {
 
 function inch(mm) { return +(mm / 25.4).toFixed(2); }
 
-function setFileUnit(idx, unit) {
+function setFileUnit(idx, unit, via) {
   if (!S.files[idx] || !UNITS[unit]) return;
+  mqTrack('unit_changed', { mq_from: S.files[idx].unit, mq_to: unit, mq_via: via || 'dropdown', mq_had_hint: !!S.files[idx].hint });
   applyUnit(S.files[idx], unit);
   renderCards();
 }
@@ -585,6 +632,11 @@ function handleFiles(fileList) {
     var failed = results.filter(function(r) { return r.status === 'rejected'; }).map(function(_, i) { return supported[i].name; });
 
     S.files.push.apply(S.files, ok);
+    mqTrack('files_added', {
+      mq_files_ok: ok.length, mq_files_failed: failed.length, mq_files_unsupported: unsupported.length,
+      mq_unit_hints: ok.filter(function(f) { return f.hint; }).length,
+      mq_formats: ok.map(function(f) { return f.ext; }).filter(function(x, i, a) { return a.indexOf(x) === i; }).join(','),
+    });
     show('upload');
     renderCards();
 
@@ -664,11 +716,13 @@ document.getElementById('mq-continue').addEventListener('click', function() {
 document.getElementById('mq-back-itar').addEventListener('click', function() { show('upload'); });
 
 document.getElementById('mq-itar-decline').addEventListener('click', function() {
+  mqTrack('itar_declined');
   document.getElementById('mq-itar-contact').style.display = '';
   document.getElementById('mq-itar-decline').style.display = 'none';
 });
 
 document.getElementById('mq-itar-confirm').addEventListener('click', function() {
+  mqTrack('itar_confirmed');
   S.process = null; S.material = null; S.materialLabel = '';
   var anyFDM = S.files.some(function(f) { return f.fdmFits; });
   var anySLA = S.files.some(function(f) { return f.slaFits; });
@@ -676,6 +730,7 @@ document.getElementById('mq-itar-confirm').addEventListener('click', function() 
   // Auto-select process only when just one fits
   if (anyFDM && !anySLA) { S.process = 'FDM'; saveSession(); }
   else if (anySLA && !anyFDM) { S.process = 'SLA'; saveSession(); }
+  if (S.process) mqTrack('process_selected', { mq_process: S.process, mq_auto: true });
 
   if (S.process) {
     renderMaterials(); show('material');
@@ -717,7 +772,7 @@ function renderProcess() {
 
   ['mq-fdm', 'mq-sla'].forEach(function(id) {
     var btn = document.getElementById(id);
-    btn.onclick = function() { S.process = btn.dataset.p; saveSession(); renderMaterials(); show('material'); };
+    btn.onclick = function() { S.process = btn.dataset.p; saveSession(); mqTrack('process_selected', { mq_process: S.process, mq_auto: false }); renderMaterials(); show('material'); };
   });
 }
 
@@ -745,6 +800,7 @@ function renderMaterials() {
   helpBtn.onclick = function() {
     S.material      = 'help-me-decide';
     S.materialLabel = 'Team recommendation';
+    mqTrack('material_selected', { mq_process: S.process, mq_material: 'help-me-decide' });
     saveSession();
     buildQuote();
   };
@@ -788,7 +844,7 @@ function renderMaterials() {
           costBadge(mat.cost) +
         '</span>' +
         (mat.desc ? '<small>' + mat.desc + '</small>' : '');
-      btn.onclick = function() { S.material = mat.key; S.materialLabel = mat.label; saveSession(); buildQuote(); };
+      btn.onclick = function() { S.material = mat.key; S.materialLabel = mat.label; saveSession(); mqTrack('material_selected', { mq_process: S.process, mq_material: mat.key, mq_material_group: mat.group }); buildQuote(); };
       grid.appendChild(btn);
     });
 
@@ -839,6 +895,7 @@ function buildQuote() {
 }
 
 function renderHelpDecideQuote(eligible) {
+  mqTrack('quote_viewed', { mq_process: S.process, mq_material: 'help-me-decide', mq_files: eligible.length, mq_value: 0, mq_currency: 'USD' });
   var fileList = eligible.map(function(f) {
     return '<div class="mq-fl">' +
       '<div><div class="mq-fl-name">' + esc(f.fileName) + '</div>' +
@@ -900,11 +957,13 @@ function renderHelpDecideQuote(eligible) {
     if (!name)  { nameEl.classList.add('error'); }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { emailEl.classList.add('error'); }
     if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      mqTrack('submit_invalid', { mq_path: 'help-me-decide' });
       errEl.innerHTML = '<p class="mq-submit-err">Please fill in the required fields.</p>'; return;
     }
 
     var btn = document.getElementById('mq-req-btn');
     btn.disabled = true; btn.textContent = 'Submitting…';
+    mqTrack('submit_attempt', { mq_path: 'help-me-decide' });
 
     var fd = new FormData();
     fd.append('name',     name);
@@ -917,6 +976,7 @@ function renderHelpDecideQuote(eligible) {
     fd.append('parts_total', 'To be quoted');
     fd.append('lead_time',   'To be confirmed after material selection');
     if (note) fd.append('note', note);
+    mqAttribution(fd);
     eligible.forEach(function(f) { if (f.originalFile) fd.append('attachment', f.originalFile, f.fileName); });
 
     fetch(FORMSPREE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
@@ -926,13 +986,16 @@ function renderHelpDecideQuote(eligible) {
           document.getElementById('mq-form-body').style.display = 'none';
           document.getElementById('mq-req-btn').style.display   = 'none';
           document.getElementById('mq-success').style.display   = '';
+          mqTrack('submit_success', { mq_path: 'help-me-decide', mq_process: S.process, mq_files: eligible.length, mq_value: 0, mq_currency: 'USD' });
         } else {
           btn.disabled = false; btn.textContent = 'Request Material Recommendation →';
+          mqTrack('submit_error', { mq_path: 'help-me-decide', mq_reason: 'server' });
           errEl.innerHTML = '<p class="mq-submit-err">Something went wrong. Please try again.</p>';
         }
       })
       .catch(function() {
         btn.disabled = false; btn.textContent = 'Request Material Recommendation →';
+        mqTrack('submit_error', { mq_path: 'help-me-decide', mq_reason: 'network' });
         errEl.innerHTML = '<p class="mq-submit-err">Network error. Please try again.</p>';
       });
   });
@@ -956,6 +1019,12 @@ function renderQuote() {
       return it.file.fileName + ' | ' + it.file.volume + ' cm³ | qty ' + it.file.qty + ' | $' + it.lineTotal.toFixed(2);
     }).join('\n');
   }
+
+  mqTrack('quote_viewed', {
+    mq_process: S.process, mq_material: S.material, mq_files: items.length,
+    mq_qty_total: items.reduce(function(s, it) { return s + it.file.qty; }, 0),
+    mq_value: grandTotal(), mq_currency: 'USD',
+  });
 
   document.getElementById('mq-quote-body').innerHTML =
     '<div class="mq-quote-meta"><strong id="mq-meta-txt">' + S.process + ' · ' + S.materialLabel + (S.process === 'FDM' ? ' · ' + S.infill + '% infill' : '') + '</strong></div>' +
@@ -1053,6 +1122,7 @@ function renderQuote() {
       var btn = e.target.closest('.mq-infill-opt');
       if (!btn) return;
       S.infill = +btn.dataset.pct;
+      mqTrack('infill_changed', { mq_infill: S.infill });
       document.querySelectorAll('.mq-infill-opt').forEach(function(b) { b.classList.toggle('active', b === btn); });
       items.forEach(function(it, i) {
         var fresh = calcLine(it.file);
@@ -1094,10 +1164,11 @@ function renderQuote() {
     var valid = true;
     if (!name)  { nameEl.classList.add('error');  valid = false; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { emailEl.classList.add('error'); valid = false; }
-    if (!valid) { errEl.innerHTML = '<p class="mq-submit-err">Please fill in the required fields.</p>'; return; }
+    if (!valid) { mqTrack('submit_invalid', { mq_path: 'priced' }); errEl.innerHTML = '<p class="mq-submit-err">Please fill in the required fields.</p>'; return; }
 
     var btn = document.getElementById('mq-req-btn');
     btn.disabled = true; btn.textContent = 'Submitting…';
+    mqTrack('submit_attempt', { mq_path: 'priced', mq_value: grandTotal(), mq_currency: 'USD' });
 
     var fd = new FormData();
     fd.append('name',        name);
@@ -1112,6 +1183,7 @@ function renderQuote() {
     fd.append('shipping',       '$' + SHIPPING_BASE.toFixed(2));
     fd.append('order_total',    '$' + (grandTotal() + SHIPPING_BASE).toFixed(2));
     if (note) fd.append('note', note);
+    mqAttribution(fd);
     eligible.forEach(function(f) { if (f.originalFile) fd.append('attachment', f.originalFile, f.fileName); });
 
     fetch(FORMSPREE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
@@ -1122,6 +1194,13 @@ function renderQuote() {
       })
       .then(function(r) {
         if (r.ok) {
+          mqTrack('submit_success', {
+            mq_path: 'priced', mq_process: S.process, mq_material: S.material,
+            mq_files: items.length,
+            mq_qty_total: items.reduce(function(s, it) { return s + it.file.qty; }, 0),
+            mq_value: grandTotal(), mq_order_total: +(grandTotal() + SHIPPING_BASE).toFixed(2), mq_currency: 'USD',
+            mq_has_phone: !!phone, mq_has_company: !!company, mq_has_note: !!note,   // booleans only, never the values
+          });
           clearSession();
           var succEl = document.getElementById('mq-success');
           document.getElementById('mq-form-body').style.display = 'none';
@@ -1248,6 +1327,7 @@ function renderQuote() {
                 if (r.ok) {
                   document.getElementById('mq-ship-form').style.display    = 'none';
                   document.getElementById('mq-ship-success').style.display = 'block';
+                  mqTrack('order_confirmed', { mq_value: grandTotal(), mq_currency: 'USD' });
                 } else {
                   shipBtn.disabled = false; shipBtn.textContent = 'Confirm Order →';
                   shipErrEl.innerHTML = '<p class="mq-submit-err">' + esc(r.data.error || 'Submission failed — please try again.') + '</p>';
@@ -1262,11 +1342,13 @@ function renderQuote() {
           // Formspree auto-reply handles the customer confirmation email.
         } else {
           btn.disabled = false; btn.textContent = 'Request My Quote →';
+          mqTrack('submit_error', { mq_path: 'priced', mq_reason: 'server' });
           errEl.innerHTML = '<p class="mq-submit-err">' + esc(r.data.error || 'Submission failed — please try again.') + '</p>';
         }
       })
       .catch(function() {
         btn.disabled = false; btn.textContent = 'Request My Quote →';
+        mqTrack('submit_error', { mq_path: 'priced', mq_reason: 'network' });
         errEl.innerHTML = '<p class="mq-submit-err">Something went wrong — please try again or email us directly.</p>';
       });
   });
@@ -1495,6 +1577,7 @@ window.mqDownloadPDF = function() {
     doc.text('mithrilplastics.com', pageW - margin, 281, { align: 'right' });
 
     doc.save('Mithril-Quote-' + d.ref + '.pdf');
+    mqTrack('pdf_downloaded');
     if (btn) { btn.textContent = '⬇ Download PDF Summary'; btn.disabled = false; }
   }
 
