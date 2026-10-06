@@ -4,6 +4,10 @@ const API_BASE      = _cfg.API_BASE      || 'https://YOUR-BACKEND.railway.app';
 
 const MOCK_MODE     = _cfg.MOCK_MODE     !== undefined ? _cfg.MOCK_MODE : true;
 const FORMSPREE_URL = _cfg.FORMSPREE_URL || 'https://formspree.io/f/mojrlbvn';
+// "Email me this quote" posts here. Defaults to the same form; point it at a second
+// Formspree form (window.MQ.FORMSPREE_SAVE_URL) to give saved quotes their own auto-reply text.
+const FORMSPREE_SAVE_URL = _cfg.FORMSPREE_SAVE_URL || FORMSPREE_URL;
+const SUBMIT_LABEL  = 'Submit for Review — No Payment Now';
 
 // Customer confirmation emails are handled by Formspree's auto-reply feature.
 
@@ -1302,8 +1306,21 @@ function renderQuote() {
       '<p>We\'ll review your files and follow up within one business day.</p>' +
     '</div>' +
     '<div id="mq-submit-err"></div>' +
-    '<p class="mq-trust-line">🔒 Your files are never shared · Prices confirmed within 1 business day</p>' +
-    '<button class="mq-cta" id="mq-req-btn">Request My Quote →</button>' +
+    '<button class="mq-cta" id="mq-req-btn" style="width:100%">' + SUBMIT_LABEL + '</button>' +
+    '<p class="mq-trust-line">🔒 Your files are never shared · Made in Orange County, no outsourcing</p>' +
+
+    /* ── Not ready? Email me this quote (email only, no files uploaded) ── */
+    '<div class="mq-save" id="mq-save">' +
+      '<button type="button" class="mq-save-toggle" id="mq-save-toggle" aria-expanded="false" aria-controls="mq-save-panel">Not ready? Email me this quote</button>' +
+      '<div class="mq-save-panel" id="mq-save-panel" style="display:none">' +
+        '<p class="mq-save-help">We\'ll email you this quote summary so you can come back to it. Your files stay on your device — nothing is uploaded until you submit for review.</p>' +
+        '<div class="mq-save-row">' +
+          '<input class="mq-inp" id="mq-save-email" type="email" placeholder="Email address" autocomplete="email" aria-label="Email address for your quote">' +
+          '<button type="button" class="mq-save-btn" id="mq-save-btn">Send</button>' +
+        '</div>' +
+        '<div class="mq-save-msg" id="mq-save-msg" role="status" aria-live="polite"></div>' +
+      '</div>' +
+    '</div>' +
     '<p class="mq-footnote">Prices based on current material rates · Estimates typically valid for 30 days</p>' +
     '<p class="mq-footnote">If you don\'t hear from us, please check your spam or junk folder.</p>';
 
@@ -1392,6 +1409,74 @@ function renderQuote() {
       renderDiscountBar(items);
     });
   }
+
+  // ── Email me this quote ───────────────────────────────────────────────────────
+  (function() {
+    var toggle = document.getElementById('mq-save-toggle'), panel = document.getElementById('mq-save-panel');
+    var emailEl = document.getElementById('mq-save-email'), btn = document.getElementById('mq-save-btn'), msg = document.getElementById('mq-save-msg');
+    function say(text, cls) { msg.textContent = text; msg.className = 'mq-save-msg' + (cls ? ' ' + cls : ''); }
+
+    toggle.addEventListener('click', function() {
+      var open = panel.style.display === 'none';
+      panel.style.display = open ? '' : 'none';
+      toggle.setAttribute('aria-expanded', open);
+      if (open) {
+        var main = document.getElementById('mq-c-email');                  // reuse what they already typed
+        if (main && main.value.trim() && !emailEl.value) emailEl.value = main.value.trim();
+        emailEl.focus();
+        mqTrack('save_open');
+      }
+    });
+
+    btn.addEventListener('click', function() {
+      var email = emailEl.value.trim();
+      emailEl.classList.remove('error'); say('');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        emailEl.classList.add('error'); say('Please enter a valid email address.', 'bad');
+        mqTrack('save_invalid'); return;
+      }
+      btn.disabled = true; btn.textContent = 'Sending…';
+      mqTrack('save_attempt', { mq_value: grandTotal(), mq_currency: 'USD' });
+
+      var sh = ship(), fd = new FormData();
+      fd.append('_subject', 'Saved quote (email only, NOT submitted) — $' + orderTotal().toFixed(2));
+      fd.append('type',     'SAVED QUOTE — customer asked for a copy; files NOT uploaded; no review requested');
+      fd.append('email',    email);
+      fd.append('process',  S.process);
+      fd.append('material', S.materialLabel);
+      if (S.process === 'FDM') fd.append('infill', S.infill + '%');
+      fd.append('quote',    filesSummary());
+      fd.append('parts_subtotal', '$' + grandTotal().toFixed(2));
+      if (minAdj() > 0)  fd.append('small_order_adjustment', '$' + minAdj().toFixed(2));
+      if (rushFee() > 0) fd.append('expedited_fee', '$' + rushFee().toFixed(2));
+      fd.append('delivery_speed',  S.speed === 'expedited' ? 'EXPEDITED (+' + Math.round(RUSH_PCT * 100) + '%)' : 'Standard');
+      fd.append('ship_by',         shipByText());
+      fd.append('delivery_method', sh.method === 'local' ? 'Local delivery requested' : 'Ship — ' + sh.tier + ' package');
+      fd.append('shipping',        sh.review ? 'QUOTE AT REVIEW (oversize)' : (sh.free ? '$0.00 (free over $' + FREE_SHIP_OVER + ')' : '$' + shipAmt().toFixed(2)));
+      fd.append('order_total',     '$' + orderTotal().toFixed(2) + (sh.review ? ' (BEFORE shipping)' : ''));
+      mqAttribution(fd);
+
+      fetch(FORMSPREE_SAVE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
+        .then(function(res) { return res.json().catch(function() { return {}; }).then(function(d) { return { ok: res.ok, data: d }; }); })
+        .then(function(r) {
+          if (r.ok) {
+            say('✓ Sent — check your inbox (and spam folder).', 'ok');
+            btn.textContent = 'Sent';                                    // stays disabled: one send per click-through
+            emailEl.disabled = true;
+            mqTrack('save_success', { mq_value: grandTotal(), mq_order_total: orderTotal(), mq_speed: S.speed, mq_currency: 'USD' });
+          } else {
+            btn.disabled = false; btn.textContent = 'Send';
+            say('Something went wrong. Please try again, or use “Submit for Review”.', 'bad');
+            mqTrack('save_error', { mq_reason: 'server' });
+          }
+        })
+        .catch(function() {
+          btn.disabled = false; btn.textContent = 'Send';
+          say('Network error. Please try again.', 'bad');
+          mqTrack('save_error', { mq_reason: 'network' });
+        });
+    });
+  })();
 
   // ── Quote form submission ─────────────────────────────────────────────────────
   document.getElementById('mq-req-btn').addEventListener('click', function() {
@@ -1612,13 +1697,13 @@ function renderQuote() {
 
           // Formspree auto-reply handles the customer confirmation email.
         } else {
-          btn.disabled = false; btn.textContent = 'Request My Quote →';
+          btn.disabled = false; btn.textContent = SUBMIT_LABEL;
           mqTrack('submit_error', { mq_path: 'priced', mq_reason: 'server' });
           errEl.innerHTML = '<p class="mq-submit-err">' + esc(r.data.error || 'Submission failed — please try again.') + '</p>';
         }
       })
       .catch(function() {
-        btn.disabled = false; btn.textContent = 'Request My Quote →';
+        btn.disabled = false; btn.textContent = SUBMIT_LABEL;
         mqTrack('submit_error', { mq_path: 'priced', mq_reason: 'network' });
         errEl.innerHTML = '<p class="mq-submit-err">Something went wrong — please try again or email us directly.</p>';
       });
