@@ -116,6 +116,8 @@ const S = {
   quoteItems: null, // live reference to renderQuote's items array for order total updates
   infill: 35,
   speed: 'standard',   // 'standard' | 'expedited'
+  shipMethod: 'ship',  // 'ship' | 'local'
+  zip: '',
 };
 
 // ── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -865,7 +867,6 @@ function discountPct(qty) {
 }
 
 var MIN_PART_PRICE = 5.00;  // minimum base price per part
-var SHIPPING_BASE  = 6.00;  // flat shipping added to every order
 
 function calcLine(file) {
   var cfg        = MOCK_RATES[S.process];
@@ -893,6 +894,58 @@ function buildQuote() {
   } else {
     S.quote = { eligible: eligible }; renderQuote(); show('quote');
   }
+}
+
+// ── ORDER MINIMUM + SHIPPING ─────────────────────────────────────────────────
+// Tunables — change these numbers, nothing else needs touching.
+var MIN_ORDER       = 35;        // parts subtotal is raised to this if lower ("small-order adjustment")
+var FREE_SHIP_OVER  = 150;       // Small/Medium shipping is free when parts subtotal reaches this
+var LOCAL_FEE       = 10;        // flat fee, hand delivery within the ZIP list below
+var PACK_G          = 100;       // packaging weight added to every shipment (grams)
+var PACK_IN         = 2;         // packaging added to the longest side (inches)
+var SHIP_TIERS = [               // first tier that fits BOTH weight and longest side wins
+  { name: 'Small',  maxG: 454,  maxIn: 8,  price: 8,  freeEligible: true  },   // up to 1 lb
+  { name: 'Medium', maxG: 2268, maxIn: 14, price: 14, freeEligible: true  },   // up to 5 lb
+  { name: 'Large',  maxG: 6804, maxIn: 24, price: 24, freeEligible: false },   // up to 15 lb
+];                               // anything bigger → "quoted at review"
+
+// ZIP codes within ~15 mi (straight line) of Brea, CA. Edit freely: add or delete codes.
+var LOCAL_ZIPS = ('' +
+  '90201 90239 90240 90241 90242 90601 90602 90603 90604 90605 90606 90607 90608 90609 90610 90612 '+
+  '90620 90621 90622 90623 90624 90630 90631 90632 90633 90637 90638 90639 90640 90650 90651 90652 '+
+  '90659 90660 90661 90662 90670 90671 90680 90701 90702 90703 90706 90707 90712 90713 90714 90715 '+
+  '90716 90720 90721 90740 90808 91702 91706 91709 91710 91714 91715 91716 91722 91723 91724 91731 '+
+  '91732 91733 91734 91735 91740 91744 91745 91746 91747 91748 91749 91765 91766 91767 91768 91769 '+
+  '91770 91773 91788 91789 91790 91791 91792 91793 91795 91797 92602 92647 92655 92683 92684 92685 '+
+  '92701 92702 92703 92704 92705 92706 92707 92708 92711 92712 92725 92728 92735 92780 92781 92782 '+
+  '92801 92802 92803 92804 92805 92806 92807 92808 92809 92811 92812 92814 92815 92816 92817 92821 '+
+  '92822 92823 92825 92831 92832 92833 92834 92835 92836 92837 92838 92840 92841 92842 92843 92844 '+
+  '92845 92846 92850 92856 92857 92859 92861 92862 92863 92864 92865 92866 92867 92868 92869 92870 '+
+  '92871 92885 92886 92887 '
+).split(/\s+/).filter(Boolean);
+
+function zipIsLocal(z) { return /^\d{5}$/.test(z) && LOCAL_ZIPS.indexOf(z) !== -1; }
+
+// Estimated shipment weight in grams for the order (deliberately a little high).
+function orderWeightG(items, process, material, infill) {
+  var d = DENSITIES[process], dens = d.mats[material] || 1.2;
+  var fill = process === 'FDM' ? Math.min(1, 0.30 + 0.70 * (infill / 100)) : d.fillFactor;   // shells + infill
+  return Math.round(items.reduce(function(s, it) { return s + it.file.volume * fill * dens * it.file.qty; }, 0) + PACK_G);
+}
+function orderLongestIn(items) {
+  return +(Math.max.apply(null, items.map(function(it) { return Math.max(it.file.bbox.x, it.file.bbox.y, it.file.bbox.z); })) / 25.4 + PACK_IN).toFixed(1);
+}
+// → { method, label, amount|null, tier, free, review, grams, inches }
+function shippingQuote(items, process, material, infill, partsSubtotal, method, zip) {
+  var g = orderWeightG(items, process, material, infill), inch = orderLongestIn(items);
+  if (method === 'local' && zipIsLocal(zip)) {
+    return { method: 'local', label: 'Local delivery', amount: LOCAL_FEE, tier: 'Local', free: false, review: false, grams: g, inches: inch };
+  }
+  var tier = SHIP_TIERS.find(function(t) { return g <= t.maxG && inch <= t.maxIn; });
+  if (!tier) return { method: 'ship', label: 'Shipping', amount: null, tier: 'Oversize', free: false, review: true, grams: g, inches: inch };
+  var free = tier.freeEligible && partsSubtotal >= FREE_SHIP_OVER;
+  return { method: 'ship', label: 'Shipping (' + tier.name + ' package)', amount: free ? 0 : tier.price, tier: tier.name, free: free, review: false, grams: g, inches: inch,
+           listPrice: tier.price, awayFromFree: tier.freeEligible && !free ? +(FREE_SHIP_OVER - partsSubtotal).toFixed(2) : 0 };
 }
 
 // ── DELIVERY SPEED + SHIP-BY DATE ────────────────────────────────────────────
@@ -1075,16 +1128,40 @@ function renderQuote() {
   }
 
   // Totals: parts + optional Expedited surcharge + flat shipping.
-  function rushFee()    { return S.speed === 'expedited' ? +(grandTotal() * RUSH_PCT).toFixed(2) : 0; }
-  function orderTotal() { return +(grandTotal() + rushFee() + SHIPPING_BASE).toFixed(2); }
+  // Minimum order: parts are raised to MIN_ORDER; Expedited is 35% of that raised figure.
+  function minAdj()     { return +Math.max(0, MIN_ORDER - grandTotal()).toFixed(2); }
+  function partsAdj()   { return +(grandTotal() + minAdj()).toFixed(2); }
+  function rushFee()    { return S.speed === 'expedited' ? +(partsAdj() * RUSH_PCT).toFixed(2) : 0; }
+  function ship()       { return shippingQuote(items, S.process, S.material, S.infill, grandTotal(), S.shipMethod, S.zip); }
+  function shipAmt()    { return ship().amount || 0; }
+  function orderTotal() { return +(partsAdj() + rushFee() + shipAmt()).toFixed(2); }
   function est()        { return deliveryEstimate(items, S.process); }
   function shipByText() {
     var e = est(), t = e[S.speed];
     return fmtDay(t.date) + (S.speed === 'expedited' && t.review ? ' (confirmed at review)' : '') + (e.large && S.speed === 'standard' ? ' (large order — confirmed at review)' : '');
   }
   function refreshTotals() {
-    var e = est(), fee = rushFee();
+    var e = est(), fee = rushFee(), sh = ship(), adj = minAdj();
     document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
+    var ar = document.getElementById('mq-adj-row');
+    if (ar) { ar.style.display = adj > 0 ? '' : 'none'; document.getElementById('mq-adj-fee').textContent = '$' + adj.toFixed(2); }
+    // shipping line + cards
+    var sl = document.getElementById('mq-ship-label'), sv = document.getElementById('mq-ship-val');
+    if (sl) sl.textContent = sh.label;
+    if (sv) sv.textContent = sh.review ? 'Quoted at review' : (sh.free ? 'FREE' : '$' + sh.amount.toFixed(2));
+    var shipPrice = document.getElementById('mq-ship-price-ship');
+    if (shipPrice) {
+      var base = shippingQuote(items, S.process, S.material, S.infill, grandTotal(), 'ship', '');
+      shipPrice.textContent = base.review ? 'Oversize — quoted at review' : (base.free ? 'FREE · ' + base.tier + ' package' : '$' + base.amount.toFixed(2) + ' · ' + base.tier + ' package');
+    }
+    var nudge = document.getElementById('mq-ship-nudge');
+    if (nudge) {
+      var b2 = shippingQuote(items, S.process, S.material, S.infill, grandTotal(), 'ship', '');
+      nudge.textContent = (S.shipMethod === 'ship' && b2.awayFromFree > 0 && b2.awayFromFree <= 100)
+        ? 'Add $' + Math.ceil(b2.awayFromFree) + ' more to your order for free shipping.' : (b2.free && S.shipMethod === 'ship' ? 'Free shipping applied (orders over $' + FREE_SHIP_OVER + ').' : '');
+    }
+    var ot0 = document.getElementById('mq-order-total-label');
+    if (ot0) ot0.textContent = sh.review ? 'Order Total (before shipping)' : 'Order Total';
     var rr = document.getElementById('mq-rush-row');
     if (rr) { rr.style.display = fee > 0 ? '' : 'none'; document.getElementById('mq-rush-fee').textContent = '$' + fee.toFixed(2); }
     var ot = document.getElementById('mq-order-total');
@@ -1095,7 +1172,7 @@ function renderQuote() {
     if (sd) sd.textContent = (e.large ? 'Estimated ' : 'Ships by ') + fmtDay(e.standard.date) + (e.large ? '*' : '');
     if (ed) ed.textContent = (e.expedited.review ? 'Target ' : 'Ships by ') + fmtDay(e.expedited.date) + (e.expedited.review ? '*' : '');
     var ep = document.getElementById('mq-speed-price-expedited');
-    if (ep) ep.textContent = '+$' + +(grandTotal() * RUSH_PCT).toFixed(2) + ' (+' + Math.round(RUSH_PCT * 100) + '%)';
+    if (ep) ep.textContent = '+$' + +(partsAdj() * RUSH_PCT).toFixed(2) + ' (+' + Math.round(RUSH_PCT * 100) + '%)';
     var note = document.getElementById('mq-speed-note');
     if (note) {
       var msg = e.startsToday ? 'Order before 12:00 PM PT today and production starts today.'
@@ -1175,10 +1252,34 @@ function renderQuote() {
       '<p class="mq-speed-note" id="mq-speed-note"></p>' +
     '</div>' +
 
+    /* ── Shipping / local delivery ── */
+    '<div class="mq-speed mq-ship" id="mq-ship" role="radiogroup" aria-label="How should we get your parts to you?">' +
+      '<p class="mq-speed-label">Get your parts</p>' +
+      '<div class="mq-speed-grid">' +
+        '<button type="button" class="mq-speed-opt' + (S.shipMethod === 'ship' ? ' active' : '') + '" role="radio" aria-checked="' + (S.shipMethod === 'ship') + '" data-ship="ship">' +
+          '<span class="mq-speed-name">Ship to me</span>' +
+          '<span class="mq-speed-date">USPS / UPS, tracked</span>' +
+          '<span class="mq-speed-price" id="mq-ship-price-ship"></span>' +
+        '</button>' +
+        '<button type="button" class="mq-speed-opt' + (S.shipMethod === 'local' ? ' active' : '') + '" role="radio" aria-checked="' + (S.shipMethod === 'local') + '" data-ship="local">' +
+          '<span class="mq-speed-name">Local delivery</span>' +
+          '<span class="mq-speed-date">Hand-delivered by our team</span>' +
+          '<span class="mq-speed-price">$' + LOCAL_FEE.toFixed(2) + ' · Orange County area</span>' +
+        '</button>' +
+      '</div>' +
+      '<div class="mq-zip-row" id="mq-zip-row" style="display:' + (S.shipMethod === 'local' ? 'flex' : 'none') + '">' +
+        '<label for="mq-zip">Delivery ZIP code</label>' +
+        '<input class="mq-inp mq-zip-inp" id="mq-zip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="e.g. 92821" value="' + esc(S.zip) + '">' +
+        '<span class="mq-zip-msg" id="mq-zip-msg" role="status"></span>' +
+      '</div>' +
+      '<p class="mq-speed-note" id="mq-ship-nudge"></p>' +
+    '</div>' +
+
     '<div class="mq-grand-row mq-parts-subtotal-row"><span>Parts Subtotal</span><span id="mq-grand">$' + grandTotal().toFixed(2) + '</span></div>' +
+    '<div class="mq-shipping-row" id="mq-adj-row" style="display:none"><span>Small-order adjustment <em class="mq-minfo" title="Orders under $' + MIN_ORDER + ' are billed at the $' + MIN_ORDER + ' order minimum.">(minimum $' + MIN_ORDER + ')</em></span><span id="mq-adj-fee"></span></div>' +
     '<div class="mq-shipping-row mq-rush-row" id="mq-rush-row" style="display:none"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span id="mq-rush-fee"></span></div>' +
-    '<div class="mq-shipping-row"><span>Shipping</span><span>$' + SHIPPING_BASE.toFixed(2) + '</span></div>' +
-    '<div class="mq-grand-row mq-order-total-row"><span>Order Total</span><span id="mq-order-total">$' + orderTotal().toFixed(2) + '</span></div>' +
+    '<div class="mq-shipping-row"><span id="mq-ship-label">Shipping</span><span id="mq-ship-val"></span></div>' +
+    '<div class="mq-grand-row mq-order-total-row"><span id="mq-order-total-label">Order Total</span><span id="mq-order-total">$' + orderTotal().toFixed(2) + '</span></div>' +
 
     /* ── Form body — hidden as a unit on success ── */
     '<div id="mq-form-body">' +
@@ -1221,18 +1322,47 @@ function renderQuote() {
     }
   });
 
+  // ── Shipping method + local ZIP ───────────────────────────────────────────────
+  function zipMsg() {
+    var m = document.getElementById('mq-zip-msg'); if (!m) return;
+    var z = S.zip;
+    m.className = 'mq-zip-msg';
+    if (S.shipMethod !== 'local' || z.length < 5) { m.textContent = ''; return; }
+    if (zipIsLocal(z)) { m.textContent = '✓ We deliver to ' + z; m.classList.add('ok'); }
+    else { m.textContent = 'Sorry, ' + z + ' is outside our local delivery area — shipping applies instead.'; m.classList.add('bad'); }
+  }
+  document.getElementById('mq-ship').addEventListener('click', function(e) {
+    var btn = e.target.closest('.mq-speed-opt');
+    if (!btn || btn.dataset.ship === S.shipMethod) return;
+    S.shipMethod = btn.dataset.ship;
+    document.querySelectorAll('#mq-ship .mq-speed-opt').forEach(function(b) {
+      var on = b === btn; b.classList.toggle('active', on); b.setAttribute('aria-checked', on);
+    });
+    document.getElementById('mq-zip-row').style.display = S.shipMethod === 'local' ? 'flex' : 'none';
+    if (S.shipMethod === 'local') document.getElementById('mq-zip').focus();
+    zipMsg(); refreshTotals();
+    var sh = ship();
+    mqTrack('ship_selected', { mq_ship_method: S.shipMethod, mq_ship_tier: sh.tier, mq_ship_free: sh.free, mq_ship_review: sh.review, mq_zip_ok: S.shipMethod === 'local' ? zipIsLocal(S.zip) : null });
+  });
+  document.getElementById('mq-zip').addEventListener('input', function(e) {
+    var z = e.target.value.replace(/\D/g, '').slice(0, 5);
+    e.target.value = z; S.zip = z;
+    zipMsg(); refreshTotals();
+    if (z.length === 5) mqTrack('zip_checked', { mq_zip_ok: zipIsLocal(z) });          // result only — never the ZIP itself
+  });
+
   // ── Delivery speed picker ─────────────────────────────────────────────────────
   document.getElementById('mq-speed').addEventListener('click', function(e) {
     var btn = e.target.closest('.mq-speed-opt');
     if (!btn || btn.dataset.speed === S.speed) return;
     S.speed = btn.dataset.speed;
-    document.querySelectorAll('.mq-speed-opt').forEach(function(b) {
+    document.querySelectorAll('#mq-speed .mq-speed-opt').forEach(function(b) {   // scoped: must not touch the shipping cards
       var on = b === btn; b.classList.toggle('active', on); b.setAttribute('aria-checked', on);
     });
     refreshTotals();
     mqTrack('speed_selected', { mq_speed: S.speed, mq_rush_fee: rushFee(), mq_needs_review: est().expedited.review, mq_value: grandTotal(), mq_currency: 'USD' });
   });
-  refreshTotals();
+  zipMsg(); refreshTotals();
 
   // ── Infill density selector ───────────────────────────────────────────────────
   if (S.process === 'FDM') {
@@ -1280,6 +1410,12 @@ function renderQuote() {
     var valid = true;
     if (!name)  { nameEl.classList.add('error');  valid = false; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { emailEl.classList.add('error'); valid = false; }
+    if (S.shipMethod === 'local' && !zipIsLocal(S.zip)) {
+      mqTrack('submit_invalid', { mq_path: 'priced', mq_reason: 'zip' });
+      errEl.innerHTML = '<p class="mq-submit-err">Enter a ZIP code inside our local delivery area, or choose “Ship to me”.</p>';
+      var zEl = document.getElementById('mq-zip'); if (zEl) zEl.focus();
+      return;
+    }
     if (!valid) { mqTrack('submit_invalid', { mq_path: 'priced' }); errEl.innerHTML = '<p class="mq-submit-err">Please fill in the required fields.</p>'; return; }
 
     var btn = document.getElementById('mq-req-btn');
@@ -1297,8 +1433,11 @@ function renderQuote() {
     fd.append('quote',       filesSummary());
     fd.append('parts_subtotal', '$' + grandTotal().toFixed(2));
     if (rushFee() > 0) fd.append('expedited_fee', '$' + rushFee().toFixed(2));
-    fd.append('shipping',       '$' + SHIPPING_BASE.toFixed(2));
-    fd.append('order_total',    '$' + orderTotal().toFixed(2));
+    if (minAdj() > 0) fd.append('small_order_adjustment', '$' + minAdj().toFixed(2) + ' (raised to $' + MIN_ORDER + ' minimum)');
+    fd.append('delivery_method', ship().method === 'local' ? 'LOCAL DELIVERY — ZIP ' + S.zip : 'Ship — ' + ship().tier + ' package (est. ' + Math.round(ship().grams / 453.6 * 10) / 10 + ' lb, longest side ' + ship().inches + ' in)');
+    fd.append('shipping',       ship().review ? 'QUOTE AT REVIEW (oversize)' : (ship().free ? '$0.00 (free over $' + FREE_SHIP_OVER + ')' : '$' + shipAmt().toFixed(2)));
+    if (ship().review) fd.append('needs_manual_review_shipping', 'YES — oversize/heavy; quote shipping and send updated total');
+    fd.append('order_total',    '$' + orderTotal().toFixed(2) + (ship().review ? ' (BEFORE shipping — oversize, quote separately)' : ''));
     fd.append('delivery_speed', S.speed === 'expedited' ? 'EXPEDITED (+' + Math.round(RUSH_PCT * 100) + '%)' : 'Standard');
     fd.append('ship_by',        shipByText());
     fd.append('lead_time',      (S.speed === 'expedited' ? 'Expedited' : 'Standard') + ' — est. ship by ' + shipByText() + (est().startsToday ? ' (if confirmed today before noon PT)' : ''));
@@ -1319,7 +1458,8 @@ function renderQuote() {
             mq_path: 'priced', mq_process: S.process, mq_material: S.material,
             mq_files: items.length,
             mq_qty_total: items.reduce(function(s, it) { return s + it.file.qty; }, 0),
-            mq_value: grandTotal(), mq_order_total: orderTotal(), mq_speed: S.speed, mq_rush_fee: rushFee(), mq_currency: 'USD',
+            mq_value: grandTotal(), mq_order_total: orderTotal(), mq_speed: S.speed, mq_rush_fee: rushFee(), mq_min_adj: minAdj(),
+            mq_ship_method: ship().method, mq_ship_tier: ship().tier, mq_ship_free: ship().free, mq_currency: 'USD',
             mq_has_phone: !!phone, mq_has_company: !!company, mq_has_note: !!note,   // booleans only, never the values
           });
           clearSession();
@@ -1344,7 +1484,10 @@ function renderQuote() {
             rushPct:   Math.round(RUSH_PCT * 100),
             speed:     S.speed,
             shipBy:    shipByText(),
-            shipping:  SHIPPING_BASE.toFixed(2),
+            adj:       minAdj() > 0 ? minAdj().toFixed(2) : null,
+            minOrder:  MIN_ORDER,
+            shipLabel: ship().label,
+            shipping:  ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2)),
             total:     orderTotal().toFixed(2),
             note:     note,
             items:    items.map(function(it) {
@@ -1381,9 +1524,10 @@ function renderQuote() {
                 '</div>';
               }).join('') +
               '<div class="mq-success-subtotal-row"><span>Parts Subtotal</span><span>$' + grandTotal().toFixed(2) + '</span></div>' +
+              (minAdj() > 0 ? '<div class="mq-success-shipping-row"><span>Small-order adjustment (min. $' + MIN_ORDER + ')</span><span>$' + minAdj().toFixed(2) + '</span></div>' : '') +
               (rushFee() > 0 ? '<div class="mq-success-shipping-row"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span>$' + rushFee().toFixed(2) + '</span></div>' : '') +
-              '<div class="mq-success-shipping-row"><span>Shipping</span><span>$' + SHIPPING_BASE.toFixed(2) + '</span></div>' +
-              '<div class="mq-success-total-row"><span>Order Total</span><span>$' + orderTotal().toFixed(2) + '</span></div>' +
+              '<div class="mq-success-shipping-row"><span>' + ship().label + '</span><span>' + (ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2))) + '</span></div>' +
+              '<div class="mq-success-total-row"><span>Order Total' + (ship().review ? ' (before shipping)' : '') + '</span><span>$' + orderTotal().toFixed(2) + '</span></div>' +
               '<div class="mq-success-note"><strong>' + (S.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery:</strong> est. ship by ' + esc(shipByText()) + '</div>' +
               (note ? '<div class="mq-success-note"><strong>Notes:</strong> ' + note + '</div>' : '') +
             '</div>' +
@@ -1673,14 +1817,15 @@ window.mqDownloadPDF = function() {
       doc.setFontSize(strong ? 12 : 9.5);
       doc.setTextColor(30, 30, 30);
       doc.text(label, margin, y);
-      doc.text('$' + value, pageW - margin, y, { align: 'right' });
+      doc.text(/^[\d.,]+$/.test(value) ? '$' + value : value, pageW - margin, y, { align: 'right' });   // 'FREE' / 'Quoted at review' print as-is
       y += strong ? 8 : 5.5;
     }
     totRow('Parts Subtotal', d.subtotal, false);
+    if (d.adj)  totRow('Small-order adjustment (minimum $' + d.minOrder + ')', d.adj, false);
     if (d.rush) totRow('Expedited (+' + d.rushPct + '%)', d.rush, false);
-    totRow('Shipping', d.shipping, false);
+    totRow(d.shipLabel, d.shipping.replace(/^\$/, ''), false);
     y += 1;
-    totRow('Order Total', d.total, true);
+    totRow(d.shipping === 'Quoted at review' ? 'Order Total (before shipping)' : 'Order Total', d.total, true);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(90, 90, 90);
