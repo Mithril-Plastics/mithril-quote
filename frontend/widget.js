@@ -115,6 +115,7 @@ const S = {
   globalQty: 1,
   quoteItems: null, // live reference to renderQuote's items array for order total updates
   infill: 35,
+  speed: 'standard',   // 'standard' | 'expedited'
 };
 
 // ── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -894,6 +895,59 @@ function buildQuote() {
   }
 }
 
+// ── DELIVERY SPEED + SHIP-BY DATE ────────────────────────────────────────────
+// Tunables — change these numbers, nothing else needs touching.
+var RUSH_PCT         = 0.35;                   // Expedited surcharge on the parts subtotal
+var STD_MIN_DAYS     = 3;                      // Standard: fastest business days to ship (small jobs)
+var EXPEDITED_DAYS   = 2;                      // Expedited: business days to ship
+var CUTOFF_HOUR_PT   = 12;                     // orders before 12:00 PM Pacific start the same business day
+var HANDLING_DAYS    = 2;                      // post-processing, QC, packing added to print time
+var HOURS_PER_DAY    = 16;                     // productive print hours per machine per day
+var MACHINES         = { FDM: 2, SLA: 1 };     // printers that can run in parallel (FDM: X2D + A1, SLA: Photon)
+var CLOSED_DATES     = [];                     // shop-closed days, e.g. ['2026-11-26', '2026-12-25']
+
+// "Now" in Pacific time, independent of the visitor's own time zone.
+function ptNow() {
+  var parts = {};
+  new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date()).forEach(function(p) { parts[p.type] = p.value; });
+  return { date: new Date(Date.UTC(+parts.year, +parts.month - 1, +parts.day, 12)), hour: +parts.hour };
+}
+function isBizDay(d) {
+  var w = d.getUTCDay();
+  return w !== 0 && w !== 6 && CLOSED_DATES.indexOf(d.toISOString().slice(0, 10)) === -1;
+}
+function nextBizDay(d) { var x = new Date(d.getTime()); while (!isBizDay(x)) x.setUTCDate(x.getUTCDate() + 1); return x; }
+function addBizDays(d, n) {
+  var x = new Date(d.getTime());
+  while (n > 0) { x.setUTCDate(x.getUTCDate() + 1); if (isBizDay(x)) n--; }
+  return x;
+}
+function fmtDay(d)  { return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }); }
+function fmtLong(d) { return d.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }); }
+
+// items: [{ file: { volume, qty } }]. Pure function of the order + the clock.
+function deliveryEstimate(items, process) {
+  var cfg   = MOCK_RATES[process];
+  var hours = items.reduce(function(s, it) { return s + (it.file.volume / cfg.cm3PerHr) * it.file.qty; }, 0);
+  var prodDays = Math.max(1, Math.ceil(hours / (HOURS_PER_DAY * (MACHINES[process] || 1))));
+  var stdDays  = Math.max(STD_MIN_DAYS, prodDays + HANDLING_DAYS);
+
+  var now = ptNow();
+  var startsToday = isBizDay(now.date) && now.hour < CUTOFF_HOUR_PT;
+  var start = startsToday ? now.date : nextBizDay(new Date(now.date.getTime() + 86400000));
+
+  return {
+    hours: +hours.toFixed(1), prodDays: prodDays, startsToday: startsToday, start: start,
+    standard:  { days: stdDays,                           date: addBizDays(start, stdDays) },
+    expedited: { days: Math.min(EXPEDITED_DAYS, stdDays), date: addBizDays(start, Math.min(EXPEDITED_DAYS, stdDays)),
+                 review: prodDays > 1 },                  // too much print time for a guaranteed 2-day turn → confirm by hand
+    large: stdDays > 5,                                   // beyond the "3-5 day" promise
+  };
+}
+
 function renderHelpDecideQuote(eligible) {
   mqTrack('quote_viewed', { mq_process: S.process, mq_material: 'help-me-decide', mq_files: eligible.length, mq_value: 0, mq_currency: 'USD' });
   var fileList = eligible.map(function(f) {
@@ -1020,7 +1074,39 @@ function renderQuote() {
     }).join('\n');
   }
 
+  // Totals: parts + optional Expedited surcharge + flat shipping.
+  function rushFee()    { return S.speed === 'expedited' ? +(grandTotal() * RUSH_PCT).toFixed(2) : 0; }
+  function orderTotal() { return +(grandTotal() + rushFee() + SHIPPING_BASE).toFixed(2); }
+  function est()        { return deliveryEstimate(items, S.process); }
+  function shipByText() {
+    var e = est(), t = e[S.speed];
+    return fmtDay(t.date) + (S.speed === 'expedited' && t.review ? ' (confirmed at review)' : '') + (e.large && S.speed === 'standard' ? ' (large order — confirmed at review)' : '');
+  }
+  function refreshTotals() {
+    var e = est(), fee = rushFee();
+    document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
+    var rr = document.getElementById('mq-rush-row');
+    if (rr) { rr.style.display = fee > 0 ? '' : 'none'; document.getElementById('mq-rush-fee').textContent = '$' + fee.toFixed(2); }
+    var ot = document.getElementById('mq-order-total');
+    if (ot) ot.textContent = '$' + orderTotal().toFixed(2);
+    // speed cards
+    var sd = document.getElementById('mq-speed-date-standard'), ed = document.getElementById('mq-speed-date-expedited');
+    // Review cases are shown as targets, not promises.
+    if (sd) sd.textContent = (e.large ? 'Estimated ' : 'Ships by ') + fmtDay(e.standard.date) + (e.large ? '*' : '');
+    if (ed) ed.textContent = (e.expedited.review ? 'Target ' : 'Ships by ') + fmtDay(e.expedited.date) + (e.expedited.review ? '*' : '');
+    var ep = document.getElementById('mq-speed-price-expedited');
+    if (ep) ep.textContent = '+$' + +(grandTotal() * RUSH_PCT).toFixed(2) + ' (+' + Math.round(RUSH_PCT * 100) + '%)';
+    var note = document.getElementById('mq-speed-note');
+    if (note) {
+      var msg = e.startsToday ? 'Order before 12:00 PM PT today and production starts today.'
+                              : 'Production starts ' + fmtLong(e.start) + ' for orders placed now (cutoff 12:00 PM PT).';
+      if (e.large || e.expedited.review) msg += ' *Date confirmed by an engineer at review — large orders may take longer.';
+      note.textContent = msg;
+    }
+  }
+
   mqTrack('quote_viewed', {
+    mq_speed: S.speed,
     mq_process: S.process, mq_material: S.material, mq_files: items.length,
     mq_qty_total: items.reduce(function(s, it) { return s + it.file.qty; }, 0),
     mq_value: grandTotal(), mq_currency: 'USD',
@@ -1071,9 +1157,28 @@ function renderQuote() {
       '</div>';
     })() +
 
+    /* ── Delivery speed ── */
+    '<div class="mq-speed" id="mq-speed" role="radiogroup" aria-label="Delivery speed">' +
+      '<p class="mq-speed-label">Delivery speed</p>' +
+      '<div class="mq-speed-grid">' +
+        '<button type="button" class="mq-speed-opt' + (S.speed === 'standard' ? ' active' : '') + '" role="radio" aria-checked="' + (S.speed === 'standard') + '" data-speed="standard">' +
+          '<span class="mq-speed-name">Standard</span>' +
+          '<span class="mq-speed-date" id="mq-speed-date-standard"></span>' +
+          '<span class="mq-speed-price">Included</span>' +
+        '</button>' +
+        '<button type="button" class="mq-speed-opt' + (S.speed === 'expedited' ? ' active' : '') + '" role="radio" aria-checked="' + (S.speed === 'expedited') + '" data-speed="expedited">' +
+          '<span class="mq-speed-name">Expedited <em>⚡</em></span>' +
+          '<span class="mq-speed-date" id="mq-speed-date-expedited"></span>' +
+          '<span class="mq-speed-price" id="mq-speed-price-expedited"></span>' +
+        '</button>' +
+      '</div>' +
+      '<p class="mq-speed-note" id="mq-speed-note"></p>' +
+    '</div>' +
+
     '<div class="mq-grand-row mq-parts-subtotal-row"><span>Parts Subtotal</span><span id="mq-grand">$' + grandTotal().toFixed(2) + '</span></div>' +
+    '<div class="mq-shipping-row mq-rush-row" id="mq-rush-row" style="display:none"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span id="mq-rush-fee"></span></div>' +
     '<div class="mq-shipping-row"><span>Shipping</span><span>$' + SHIPPING_BASE.toFixed(2) + '</span></div>' +
-    '<div class="mq-grand-row mq-order-total-row"><span>Order Total</span><span id="mq-order-total">$' + (grandTotal() + SHIPPING_BASE).toFixed(2) + '</span></div>' +
+    '<div class="mq-grand-row mq-order-total-row"><span>Order Total</span><span id="mq-order-total">$' + orderTotal().toFixed(2) + '</span></div>' +
 
     /* ── Form body — hidden as a unit on success ── */
     '<div id="mq-form-body">' +
@@ -1116,6 +1221,19 @@ function renderQuote() {
     }
   });
 
+  // ── Delivery speed picker ─────────────────────────────────────────────────────
+  document.getElementById('mq-speed').addEventListener('click', function(e) {
+    var btn = e.target.closest('.mq-speed-opt');
+    if (!btn || btn.dataset.speed === S.speed) return;
+    S.speed = btn.dataset.speed;
+    document.querySelectorAll('.mq-speed-opt').forEach(function(b) {
+      var on = b === btn; b.classList.toggle('active', on); b.setAttribute('aria-checked', on);
+    });
+    refreshTotals();
+    mqTrack('speed_selected', { mq_speed: S.speed, mq_rush_fee: rushFee(), mq_needs_review: est().expedited.review, mq_value: grandTotal(), mq_currency: 'USD' });
+  });
+  refreshTotals();
+
   // ── Infill density selector ───────────────────────────────────────────────────
   if (S.process === 'FDM') {
     document.querySelector('.mq-infill-bar').addEventListener('click', function(e) {
@@ -1138,9 +1256,7 @@ function renderQuote() {
           badge.textContent = '−' + it.pct + '%';
         } else if (badge) { badge.remove(); }
       });
-      document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
-      var otEl2 = document.getElementById('mq-order-total');
-      if (otEl2) otEl2.textContent = '$' + (grandTotal() + SHIPPING_BASE).toFixed(2);
+      refreshTotals();
       var metaTxt = document.getElementById('mq-meta-txt');
       if (metaTxt) metaTxt.textContent = S.process + ' · ' + S.materialLabel + ' · ' + S.infill + '% infill';
       renderDiscountBar(items);
@@ -1168,7 +1284,7 @@ function renderQuote() {
 
     var btn = document.getElementById('mq-req-btn');
     btn.disabled = true; btn.textContent = 'Submitting…';
-    mqTrack('submit_attempt', { mq_path: 'priced', mq_value: grandTotal(), mq_currency: 'USD' });
+    mqTrack('submit_attempt', { mq_path: 'priced', mq_speed: S.speed, mq_value: grandTotal(), mq_currency: 'USD' });
 
     var fd = new FormData();
     fd.append('name',        name);
@@ -1180,8 +1296,13 @@ function renderQuote() {
     if (S.process === 'FDM') fd.append('infill', S.infill + '%');
     fd.append('quote',       filesSummary());
     fd.append('parts_subtotal', '$' + grandTotal().toFixed(2));
+    if (rushFee() > 0) fd.append('expedited_fee', '$' + rushFee().toFixed(2));
     fd.append('shipping',       '$' + SHIPPING_BASE.toFixed(2));
-    fd.append('order_total',    '$' + (grandTotal() + SHIPPING_BASE).toFixed(2));
+    fd.append('order_total',    '$' + orderTotal().toFixed(2));
+    fd.append('delivery_speed', S.speed === 'expedited' ? 'EXPEDITED (+' + Math.round(RUSH_PCT * 100) + '%)' : 'Standard');
+    fd.append('ship_by',        shipByText());
+    fd.append('lead_time',      (S.speed === 'expedited' ? 'Expedited' : 'Standard') + ' — est. ship by ' + shipByText() + (est().startsToday ? ' (if confirmed today before noon PT)' : ''));
+    if (S.speed === 'expedited' && est().expedited.review) fd.append('needs_manual_review', 'YES — expedited on a large order; confirm date with customer');
     if (note) fd.append('note', note);
     mqAttribution(fd);
     eligible.forEach(function(f) { if (f.originalFile) fd.append('attachment', f.originalFile, f.fileName); });
@@ -1198,7 +1319,7 @@ function renderQuote() {
             mq_path: 'priced', mq_process: S.process, mq_material: S.material,
             mq_files: items.length,
             mq_qty_total: items.reduce(function(s, it) { return s + it.file.qty; }, 0),
-            mq_value: grandTotal(), mq_order_total: +(grandTotal() + SHIPPING_BASE).toFixed(2), mq_currency: 'USD',
+            mq_value: grandTotal(), mq_order_total: orderTotal(), mq_speed: S.speed, mq_rush_fee: rushFee(), mq_currency: 'USD',
             mq_has_phone: !!phone, mq_has_company: !!company, mq_has_note: !!note,   // booleans only, never the values
           });
           clearSession();
@@ -1219,8 +1340,12 @@ function renderQuote() {
             material: S.materialLabel,
             infill:    S.process === 'FDM' ? S.infill : null,
             subtotal:  grandTotal().toFixed(2),
+            rush:      rushFee() > 0 ? rushFee().toFixed(2) : null,
+            rushPct:   Math.round(RUSH_PCT * 100),
+            speed:     S.speed,
+            shipBy:    shipByText(),
             shipping:  SHIPPING_BASE.toFixed(2),
-            total:     (grandTotal() + SHIPPING_BASE).toFixed(2),
+            total:     orderTotal().toFixed(2),
             note:     note,
             items:    items.map(function(it) {
               return { fileName: it.file.fileName, volume: it.file.volume,
@@ -1256,8 +1381,10 @@ function renderQuote() {
                 '</div>';
               }).join('') +
               '<div class="mq-success-subtotal-row"><span>Parts Subtotal</span><span>$' + grandTotal().toFixed(2) + '</span></div>' +
+              (rushFee() > 0 ? '<div class="mq-success-shipping-row"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span>$' + rushFee().toFixed(2) + '</span></div>' : '') +
               '<div class="mq-success-shipping-row"><span>Shipping</span><span>$' + SHIPPING_BASE.toFixed(2) + '</span></div>' +
-              '<div class="mq-success-total-row"><span>Order Total</span><span>$' + (grandTotal() + SHIPPING_BASE).toFixed(2) + '</span></div>' +
+              '<div class="mq-success-total-row"><span>Order Total</span><span>$' + orderTotal().toFixed(2) + '</span></div>' +
+              '<div class="mq-success-note"><strong>' + (S.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery:</strong> est. ship by ' + esc(shipByText()) + '</div>' +
               (note ? '<div class="mq-success-note"><strong>Notes:</strong> ' + note + '</div>' : '') +
             '</div>' +
 
@@ -1378,9 +1505,7 @@ function renderQuote() {
         saveEl.textContent = '';
       }
     }
-    document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
-    var otEl = document.getElementById('mq-order-total');
-    if (otEl) otEl.textContent = '$' + (grandTotal() + SHIPPING_BASE).toFixed(2);
+    refreshTotals();
     renderDiscountBar(items);
   }
 }
@@ -1538,16 +1663,29 @@ window.mqDownloadPDF = function() {
       y += rh;
     });
 
-    // Total row
+    // Totals — parts, optional Expedited fee, shipping, order total.
+    // (Previously this row was labelled "Parts Total" but showed the figure INCLUDING shipping.)
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, y, pageW - margin, y);
-    y += 7;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(30, 30, 30);
-    doc.text('Parts Total', margin, y);
-    doc.text('$' + d.total, pageW - margin, y, { align: 'right' });
-    y += 10;
+    y += 6;
+    function totRow(label, value, strong) {
+      doc.setFont('helvetica', strong ? 'bold' : 'normal');
+      doc.setFontSize(strong ? 12 : 9.5);
+      doc.setTextColor(30, 30, 30);
+      doc.text(label, margin, y);
+      doc.text('$' + value, pageW - margin, y, { align: 'right' });
+      y += strong ? 8 : 5.5;
+    }
+    totRow('Parts Subtotal', d.subtotal, false);
+    if (d.rush) totRow('Expedited (+' + d.rushPct + '%)', d.rush, false);
+    totRow('Shipping', d.shipping, false);
+    y += 1;
+    totRow('Order Total', d.total, true);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(90, 90, 90);
+    doc.text((d.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery — est. ship by ' + d.shipBy, margin, y);
+    y += 9;
 
     // ── Notes ──────────────────────────────────────────────────────────────
     if (d.note) {

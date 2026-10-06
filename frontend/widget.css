@@ -237,6 +237,24 @@
 .mq-grand-row span:last-child{color:var(--mq-teal)}
 .mq-parts-subtotal-row{font-size:15px;font-weight:600;border-top:1px solid rgba(86,5,145,.25);padding-top:14px;margin-top:8px;margin-bottom:0}
 .mq-parts-subtotal-row span:last-child{color:var(--mq-tx-2)}
+/* ─── Delivery speed picker ───────────────────────────────────────────────── */
+.mq-speed{margin:22px 0 14px}
+.mq-speed-label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mq-tx-2);margin:0 0 10px}
+.mq-speed-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.mq-speed-opt{display:flex;flex-direction:column;gap:3px;text-align:left;background:var(--mq-nxt-bg);border:1.5px solid var(--mq-nxt-brd);border-radius:12px;padding:14px 16px;cursor:pointer;color:var(--mq-tx);font-family:inherit;transition:border-color .15s,background .15s,box-shadow .15s}
+.mq-speed-opt:hover{border-color:var(--mq-teal-brd)}
+.mq-speed-opt:focus-visible{outline:2px solid var(--mq-teal);outline-offset:2px}
+.mq-speed-opt{position:relative}
+.mq-speed-opt:not(.active){opacity:.82}
+.mq-speed-opt.active{border-color:var(--mq-teal);background:var(--mq-teal-bg);box-shadow:0 0 0 1px var(--mq-teal);opacity:1}
+.mq-speed-opt.active::after{content:'✓';position:absolute;top:12px;right:12px;width:20px;height:20px;border-radius:50%;background:var(--mq-teal);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.mq-speed-name{font-size:15px;font-weight:700}
+.mq-speed-name em{font-style:normal}
+.mq-speed-date{font-size:13px;color:var(--mq-teal);font-weight:600}
+.mq-speed-price{font-size:12.5px;color:var(--mq-tx-2)}
+.mq-speed-note{font-size:12px;line-height:1.5;color:var(--mq-tx-3);margin:10px 0 0}
+@media (max-width:480px){.mq-speed-grid{grid-template-columns:minmax(0,1fr)}}
+
 .mq-shipping-row{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;font-weight:600;color:var(--mq-tx-2);padding:6px 0;border-bottom:1px solid rgba(86,5,145,.2)}
 .mq-order-total-row{border-top:2px solid var(--mq-teal-brd);margin-top:0}
 .mq-success-subtotal-row{display:flex;justify-content:space-between;padding:8px 14px;font-size:13px;color:var(--mq-tx-2);border-top:1px solid rgba(86,5,145,.3)}
