@@ -906,7 +906,6 @@ var INSERT_FEE      = 1.5;       // heat-set insert: price per insert (FDM only)
 var INSERT_SETUP    = 7.5;       // flat setup, charged once per order that has any inserts
 var INSERT_MAX      = 20;        // max inserts per part in the quote UI
 var REQUEST_OPTS    = [          // not priced online — customer ticks them, we quote at review
-  { id: 'finish',     label: 'Surface finish (sanding, smoothing, paint)' },
   { id: 'inspection', label: 'Inspection report / certificate of conformance' },
   { id: 'tolerance',  label: 'Tight tolerance requirements' },
   { id: 'color',      label: 'Specific color match' },
@@ -1271,7 +1270,7 @@ function renderQuote() {
 
     /* ── Other requirements (not priced online) ── */
     '<details class="mq-reqopts" id="mq-reqopts"' + (S.requests.length ? ' open' : '') + '>' +
-      '<summary>Need a finish, inspection report or tight tolerances? <em>quoted at review</em></summary>' +
+      '<summary>Need an inspection report, tight tolerances or a color match? <em>quoted at review</em></summary>' +
       '<p class="mq-reqopts-help">These aren\'t priced instantly. Tick what you need and we\'ll confirm the price before anything is charged.</p>' +
       REQUEST_OPTS.map(function(o) {
         return '<label class="mq-reqopt"><input type="checkbox" data-req="' + o.id + '"' + (S.requests.indexOf(o.id) !== -1 ? ' checked' : '') + '> <span>' + esc(o.label) + '</span></label>';
