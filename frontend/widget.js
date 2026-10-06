@@ -902,6 +902,15 @@ function buildQuote() {
 
 // ── ORDER MINIMUM + SHIPPING ─────────────────────────────────────────────────
 // Tunables — change these numbers, nothing else needs touching.
+var INSERT_FEE      = 1.5;       // heat-set insert: price per insert (FDM only)
+var INSERT_SETUP    = 7.5;       // flat setup, charged once per order that has any inserts
+var INSERT_MAX      = 20;        // max inserts per part in the quote UI
+var REQUEST_OPTS    = [          // not priced online — customer ticks them, we quote at review
+  { id: 'finish',     label: 'Surface finish (sanding, smoothing, paint)' },
+  { id: 'inspection', label: 'Inspection report / certificate of conformance' },
+  { id: 'tolerance',  label: 'Tight tolerance requirements' },
+  { id: 'color',      label: 'Specific color match' },
+];
 var MIN_ORDER       = 35;        // parts subtotal is raised to this if lower ("small-order adjustment")
 var FREE_SHIP_OVER  = 150;       // Small/Medium shipping is free when parts subtotal reaches this
 var LOCAL_FEE       = 10;        // flat fee, hand delivery within the ZIP list below
@@ -1121,13 +1130,15 @@ function renderQuote() {
     return;
   }
 
+  S.requests = S.requests || [];
+  eligible.forEach(function(f) { if (S.process !== 'FDM') f.inserts = 0; else f.inserts = f.inserts || 0; });
   var items = eligible.map(function(f) { return Object.assign({ file: f }, calcLine(f)); });
   S.quoteItems = items;
 
   function grandTotal() { return +items.reduce(function(s, it) { return s + it.lineTotal; }, 0).toFixed(2); }
   function filesSummary() {
     return items.map(function(it) {
-      return it.file.fileName + ' | ' + it.file.volume + ' cm³ | qty ' + it.file.qty + ' | $' + it.lineTotal.toFixed(2);
+      return it.file.fileName + ' | ' + it.file.volume + ' cm³ | qty ' + it.file.qty + ' | $' + it.lineTotal.toFixed(2) + (it.file.inserts > 0 ? ' | + ' + it.file.inserts + ' heat-set inserts/part' : '');
     }).join('\n');
   }
 
@@ -1135,10 +1146,15 @@ function renderQuote() {
   // Minimum order: parts are raised to MIN_ORDER; Expedited is 35% of that raised figure.
   function minAdj()     { return +Math.max(0, MIN_ORDER - grandTotal()).toFixed(2); }
   function partsAdj()   { return +(grandTotal() + minAdj()).toFixed(2); }
-  function rushFee()    { return S.speed === 'expedited' ? +(partsAdj() * RUSH_PCT).toFixed(2) : 0; }
+  function insTotal()   { return items.reduce(function(s, it) { return s + (it.file.inserts || 0) * it.file.qty; }, 0); }
+  function insertFee()  { var n = insTotal(); return n > 0 ? +(n * INSERT_FEE + INSERT_SETUP).toFixed(2) : 0; }
+  function prodSub()    { return +(partsAdj() + insertFee()).toFixed(2); }          // parts (after minimum) + inserts; Expedited applies to all of it
+  function reqLabels()  { return REQUEST_OPTS.filter(function(o) { return S.requests.indexOf(o.id) !== -1; }).map(function(o) { return o.label; }); }
+  function insDetail()  { return items.filter(function(it) { return it.file.inserts > 0; }).map(function(it) { return it.file.fileName + ': ' + it.file.inserts + '/part × ' + it.file.qty; }).join('; '); }
+  function rushFee()    { return S.speed === 'expedited' ? +(prodSub() * RUSH_PCT).toFixed(2) : 0; }
   function ship()       { return shippingQuote(items, S.process, S.material, S.infill, grandTotal(), S.shipMethod, S.zip); }
   function shipAmt()    { return ship().amount || 0; }
-  function orderTotal() { return +(partsAdj() + rushFee() + shipAmt()).toFixed(2); }
+  function orderTotal() { return +(prodSub() + rushFee() + shipAmt()).toFixed(2); }
   function est()        { return deliveryEstimate(items, S.process); }
   function shipByText() {
     var e = est(), t = e[S.speed];
@@ -1166,6 +1182,13 @@ function renderQuote() {
     }
     var ot0 = document.getElementById('mq-order-total-label');
     if (ot0) ot0.textContent = sh.review ? 'Order Total (before shipping)' : 'Order Total';
+    var ir = document.getElementById('mq-ins-row');
+    if (ir) {
+      var ifee = insertFee();
+      ir.style.display = ifee > 0 ? '' : 'none';
+      document.getElementById('mq-ins-fee').textContent = '$' + ifee.toFixed(2);
+      document.getElementById('mq-ins-desc').textContent = '(' + insTotal() + ' × $' + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup)';
+    }
     var rr = document.getElementById('mq-rush-row');
     if (rr) { rr.style.display = fee > 0 ? '' : 'none'; document.getElementById('mq-rush-fee').textContent = '$' + fee.toFixed(2); }
     var ot = document.getElementById('mq-order-total');
@@ -1176,7 +1199,7 @@ function renderQuote() {
     if (sd) sd.textContent = (e.large ? 'Estimated ' : 'Ships by ') + fmtDay(e.standard.date) + (e.large ? '*' : '');
     if (ed) ed.textContent = (e.expedited.review ? 'Target ' : 'Ships by ') + fmtDay(e.expedited.date) + (e.expedited.review ? '*' : '');
     var ep = document.getElementById('mq-speed-price-expedited');
-    if (ep) ep.textContent = '+$' + +(partsAdj() * RUSH_PCT).toFixed(2) + ' (+' + Math.round(RUSH_PCT * 100) + '%)';
+    if (ep) ep.textContent = '+$' + (prodSub() * RUSH_PCT).toFixed(2) + ' (+' + Math.round(RUSH_PCT * 100) + '%)';
     var note = document.getElementById('mq-speed-note');
     if (note) {
       var msg = e.startsToday ? 'Order before 12:00 PM PT today and production starts today.'
@@ -1219,6 +1242,14 @@ function renderQuote() {
         '<button class="mq-inc">+</button></div>' +
         (it.pct > 0 ? '<span class="mq-badge">−' + it.pct + '%</span>' : '') + '</div>' +
         '<div class="mq-fl-price mq-line-total">$' + it.lineTotal.toFixed(2) + '</div>' +
+        (S.process === 'FDM' ?
+          '<div class="mq-ins">' +
+            '<span class="mq-ins-label">Heat-set inserts per part <em>$' + INSERT_FEE.toFixed(2) + ' each</em></span>' +
+            '<div class="mq-stepper mq-ins-stepper"><button type="button" class="mq-ins-dec" aria-label="Fewer inserts per part">−</button>' +
+            '<input type="number" min="0" max="' + INSERT_MAX + '" value="' + (it.file.inserts || 0) + '" class="mq-ins-inp" aria-label="Heat-set inserts per part">' +
+            '<button type="button" class="mq-ins-inc" aria-label="More inserts per part">+</button></div>' +
+            '<span class="mq-ins-sum"></span>' +
+          '</div>' : '') +
       '</div>';
     }).join('') + '</div>' +
 
@@ -1237,6 +1268,15 @@ function renderQuote() {
         }).join('') +
       '</div>';
     })() +
+
+    /* ── Other requirements (not priced online) ── */
+    '<details class="mq-reqopts" id="mq-reqopts"' + (S.requests.length ? ' open' : '') + '>' +
+      '<summary>Need a finish, inspection report or tight tolerances? <em>quoted at review</em></summary>' +
+      '<p class="mq-reqopts-help">These aren\'t priced instantly. Tick what you need and we\'ll confirm the price before anything is charged.</p>' +
+      REQUEST_OPTS.map(function(o) {
+        return '<label class="mq-reqopt"><input type="checkbox" data-req="' + o.id + '"' + (S.requests.indexOf(o.id) !== -1 ? ' checked' : '') + '> <span>' + esc(o.label) + '</span></label>';
+      }).join('') +
+    '</details>' +
 
     /* ── Delivery speed ── */
     '<div class="mq-speed" id="mq-speed" role="radiogroup" aria-label="Delivery speed">' +
@@ -1281,6 +1321,7 @@ function renderQuote() {
 
     '<div class="mq-grand-row mq-parts-subtotal-row"><span>Parts Subtotal</span><span id="mq-grand">$' + grandTotal().toFixed(2) + '</span></div>' +
     '<div class="mq-shipping-row" id="mq-adj-row" style="display:none"><span>Small-order adjustment <em class="mq-minfo" title="Orders under $' + MIN_ORDER + ' are billed at the $' + MIN_ORDER + ' order minimum.">(minimum $' + MIN_ORDER + ')</em></span><span id="mq-adj-fee"></span></div>' +
+    '<div class="mq-shipping-row" id="mq-ins-row" style="display:none"><span>Heat-set inserts <em class="mq-minfo" id="mq-ins-desc"></em></span><span id="mq-ins-fee"></span></div>' +
     '<div class="mq-shipping-row mq-rush-row" id="mq-rush-row" style="display:none"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span id="mq-rush-fee"></span></div>' +
     '<div class="mq-shipping-row"><span id="mq-ship-label">Shipping</span><span id="mq-ship-val"></span></div>' +
     '<div class="mq-grand-row mq-order-total-row"><span id="mq-order-total-label">Order Total</span><span id="mq-order-total">$' + orderTotal().toFixed(2) + '</span></div>' +
@@ -1337,6 +1378,40 @@ function renderQuote() {
       var row = e.target.closest('.mq-fl');
       if (row) applyQuoteQty(+row.dataset.idx, +e.target.value, items);
     }
+  });
+
+  // ── Heat-set inserts (per file, per part) + request-only options ─────────────
+  function updInsRow(idx) {
+    var it = items[idx], row = document.querySelector('#mq-lines .mq-fl[data-idx="' + idx + '"]');
+    if (!row) return;
+    var inp = row.querySelector('.mq-ins-inp'), sum = row.querySelector('.mq-ins-sum');
+    if (!inp || !sum) return;
+    inp.value = it.file.inserts || 0;
+    var n = (it.file.inserts || 0) * it.file.qty;
+    sum.textContent = n > 0 ? n + ' total · $' + (n * INSERT_FEE).toFixed(2) : '';
+  }
+  function setInserts(idx, val) {
+    val = Math.min(INSERT_MAX, Math.max(0, parseInt(val) || 0));
+    items[idx].file.inserts = val;
+    updInsRow(idx); refreshTotals();
+    mqTrack('inserts_changed', { mq_inserts_total: insTotal(), mq_insert_fee: insertFee(), mq_currency: 'USD' });
+  }
+  items.forEach(function(it, i) { updInsRow(i); });
+  document.getElementById('mq-lines').addEventListener('click', function(e) {
+    var row = e.target.closest('.mq-fl'); if (!row) return;
+    var idx = +row.dataset.idx, inp = row.querySelector('.mq-ins-inp');
+    if (e.target.classList.contains('mq-ins-dec')) setInserts(idx, +inp.value - 1);
+    if (e.target.classList.contains('mq-ins-inc')) setInserts(idx, +inp.value + 1);
+  });
+  document.getElementById('mq-lines').addEventListener('change', function(e) {
+    if (e.target.classList.contains('mq-ins-inp')) { var row = e.target.closest('.mq-fl'); if (row) setInserts(+row.dataset.idx, +e.target.value); }
+  });
+  document.getElementById('mq-reqopts').addEventListener('change', function(e) {
+    var id = e.target && e.target.getAttribute && e.target.getAttribute('data-req'); if (!id) return;
+    var i = S.requests.indexOf(id);
+    if (e.target.checked && i === -1) S.requests.push(id);
+    if (!e.target.checked && i !== -1) S.requests.splice(i, 1);
+    mqTrack('request_option', { mq_option: id, mq_on: e.target.checked, mq_requests: S.requests.slice().sort().join(',') });
   });
 
   // ── Shipping method + local ZIP ───────────────────────────────────────────────
@@ -1448,7 +1523,9 @@ function renderQuote() {
       fd.append('quote',    filesSummary());
       fd.append('parts_subtotal', '$' + grandTotal().toFixed(2));
       if (minAdj() > 0)  fd.append('small_order_adjustment', '$' + minAdj().toFixed(2));
+      if (insertFee() > 0) fd.append('heat_set_inserts', '$' + insertFee().toFixed(2) + ' (' + insTotal() + (insTotal() === 1 ? ' insert' : ' inserts') + ' + $' + INSERT_SETUP.toFixed(2) + ' setup)');
       if (rushFee() > 0) fd.append('expedited_fee', '$' + rushFee().toFixed(2));
+      if (S.requests.length) fd.append('special_requests', reqLabels().join('; ') + ' (priced at review — not in total)');
       fd.append('delivery_speed',  S.speed === 'expedited' ? 'EXPEDITED (+' + Math.round(RUSH_PCT * 100) + '%)' : 'Standard');
       fd.append('ship_by',         shipByText());
       fd.append('delivery_method', sh.method === 'local' ? 'Local delivery requested' : 'Ship — ' + sh.tier + ' package');
@@ -1517,8 +1594,13 @@ function renderQuote() {
     if (S.process === 'FDM') fd.append('infill', S.infill + '%');
     fd.append('quote',       filesSummary());
     fd.append('parts_subtotal', '$' + grandTotal().toFixed(2));
+    if (insertFee() > 0) fd.append('heat_set_inserts', '$' + insertFee().toFixed(2) + ' — ' + insTotal() + (insTotal() === 1 ? ' insert × $' : ' inserts × $') + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup (' + insDetail() + ')');
     if (rushFee() > 0) fd.append('expedited_fee', '$' + rushFee().toFixed(2));
     if (minAdj() > 0) fd.append('small_order_adjustment', '$' + minAdj().toFixed(2) + ' (raised to $' + MIN_ORDER + ' minimum)');
+    if (S.requests.length) {
+      fd.append('special_requests', reqLabels().join('; '));
+      fd.append('needs_manual_review_options', 'YES — customer asked for options not priced online; quote them and send an updated total');
+    }
     fd.append('delivery_method', ship().method === 'local' ? 'LOCAL DELIVERY — ZIP ' + S.zip : 'Ship — ' + ship().tier + ' package (est. ' + Math.round(ship().grams / 453.6 * 10) / 10 + ' lb, longest side ' + ship().inches + ' in)');
     fd.append('shipping',       ship().review ? 'QUOTE AT REVIEW (oversize)' : (ship().free ? '$0.00 (free over $' + FREE_SHIP_OVER + ')' : '$' + shipAmt().toFixed(2)));
     if (ship().review) fd.append('needs_manual_review_shipping', 'YES — oversize/heavy; quote shipping and send updated total');
@@ -1545,6 +1627,7 @@ function renderQuote() {
             mq_qty_total: items.reduce(function(s, it) { return s + it.file.qty; }, 0),
             mq_value: grandTotal(), mq_order_total: orderTotal(), mq_speed: S.speed, mq_rush_fee: rushFee(), mq_min_adj: minAdj(),
             mq_ship_method: ship().method, mq_ship_tier: ship().tier, mq_ship_free: ship().free, mq_currency: 'USD',
+            mq_inserts_total: insTotal(), mq_insert_fee: insertFee(), mq_requests: S.requests.slice().sort().join(','),
             mq_has_phone: !!phone, mq_has_company: !!company, mq_has_note: !!note,   // booleans only, never the values
           });
           clearSession();
@@ -1570,6 +1653,9 @@ function renderQuote() {
             speed:     S.speed,
             shipBy:    shipByText(),
             adj:       minAdj() > 0 ? minAdj().toFixed(2) : null,
+            ins:       insertFee() > 0 ? insertFee().toFixed(2) : null,
+            insDesc:   insertFee() > 0 ? insTotal() + ' × $' + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup' : '',
+            requests:  reqLabels(),
             minOrder:  MIN_ORDER,
             shipLabel: ship().label,
             shipping:  ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2)),
@@ -1610,10 +1696,12 @@ function renderQuote() {
               }).join('') +
               '<div class="mq-success-subtotal-row"><span>Parts Subtotal</span><span>$' + grandTotal().toFixed(2) + '</span></div>' +
               (minAdj() > 0 ? '<div class="mq-success-shipping-row"><span>Small-order adjustment (min. $' + MIN_ORDER + ')</span><span>$' + minAdj().toFixed(2) + '</span></div>' : '') +
+              (insertFee() > 0 ? '<div class="mq-success-shipping-row"><span>Heat-set inserts (' + insTotal() + ' × $' + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup)</span><span>$' + insertFee().toFixed(2) + '</span></div>' : '') +
               (rushFee() > 0 ? '<div class="mq-success-shipping-row"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span>$' + rushFee().toFixed(2) + '</span></div>' : '') +
               '<div class="mq-success-shipping-row"><span>' + ship().label + '</span><span>' + (ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2))) + '</span></div>' +
               '<div class="mq-success-total-row"><span>Order Total' + (ship().review ? ' (before shipping)' : '') + '</span><span>$' + orderTotal().toFixed(2) + '</span></div>' +
               '<div class="mq-success-note"><strong>' + (S.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery:</strong> est. ship by ' + esc(shipByText()) + '</div>' +
+              (S.requests.length ? '<div class="mq-success-note"><strong>Priced at review:</strong> ' + esc(reqLabels().join('; ')) + '</div>' : '') +
               (note ? '<div class="mq-success-note"><strong>Notes:</strong> ' + note + '</div>' : '') +
             '</div>' +
 
@@ -1734,6 +1822,7 @@ function renderQuote() {
         saveEl.textContent = '';
       }
     }
+    updInsRow(idx);
     refreshTotals();
     renderDiscountBar(items);
   }
@@ -1907,6 +1996,7 @@ window.mqDownloadPDF = function() {
     }
     totRow('Parts Subtotal', d.subtotal, false);
     if (d.adj)  totRow('Small-order adjustment (minimum $' + d.minOrder + ')', d.adj, false);
+    if (d.ins)  totRow('Heat-set inserts (' + d.insDesc + ')', d.ins, false);
     if (d.rush) totRow('Expedited (+' + d.rushPct + '%)', d.rush, false);
     totRow(d.shipLabel, d.shipping.replace(/^\$/, ''), false);
     y += 1;
@@ -1916,6 +2006,12 @@ window.mqDownloadPDF = function() {
     doc.setTextColor(90, 90, 90);
     doc.text((d.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery — est. ship by ' + d.shipBy, margin, y);
     y += 9;
+    if (d.requests && d.requests.length) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(30, 30, 30);
+      doc.text('Requested — priced at review (not in total):', margin, y);
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(90, 90, 90);
+      var rl = doc.splitTextToSize(d.requests.join('; '), cW); y += 4.5; doc.text(rl, margin, y); y += rl.length * 4 + 5;
+    }
 
     // ── Notes ──────────────────────────────────────────────────────────────
     if (d.note) {

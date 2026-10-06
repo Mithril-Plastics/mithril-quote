@@ -372,3 +372,17 @@
   .mq-addr-row{grid-template-columns:1fr}
   .mq-ship-opts{grid-template-columns:1fr}
 }
+
+/* ── Heat-set inserts + request-only options ── */
+.mq-ins{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:-4px;padding:8px 10px;border-radius:8px;background:rgba(86,5,145,.08)}
+.mq-ins-label{font-size:13px;font-weight:600;color:var(--mq-tx-2)}
+.mq-ins-label em{font-style:normal;font-weight:400;color:#a8a8a8;margin-left:4px}
+.mq-ins-stepper button{width:30px;height:30px;font-size:16px}
+.mq-ins-stepper input{width:40px;height:30px;font-size:14px}
+.mq-ins-sum{font-size:12.5px;color:var(--mq-teal);font-weight:600;margin-left:auto}
+.mq-reqopts{margin:14px 0 4px;border:1px solid rgba(86,5,145,.3);border-radius:10px;padding:10px 12px;background:rgba(86,5,145,.05)}
+.mq-reqopts summary{cursor:pointer;font-size:13.5px;font-weight:600;color:var(--mq-tx-2);list-style-position:inside}
+.mq-reqopts summary em{font-style:normal;font-weight:400;color:var(--mq-teal);margin-left:4px}
+.mq-reqopts-help{font-size:12.5px;color:#a8a8a8;margin:8px 0 6px}
+.mq-reqopt{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;color:var(--mq-tx);cursor:pointer}
+.mq-reqopt input{width:18px;height:18px;accent-color:#560591;flex:none}
