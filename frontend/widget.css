@@ -386,3 +386,11 @@
 .mq-reqopts-help{font-size:12.5px;color:#a8a8a8;margin:8px 0 6px}
 .mq-reqopt{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;color:var(--mq-tx);cursor:pointer}
 .mq-reqopt input{width:18px;height:18px;accent-color:#560591;flex:none}
+
+/* ── Dedicated heat-set inserts section ── */
+.mq-inserts{margin:16px 0 6px}
+.mq-inserts .mq-speed-label em{font-style:normal;font-weight:400;text-transform:none;letter-spacing:0;color:#a8a8a8;margin-left:6px}
+.mq-inserts-help{font-size:13px;color:#a8a8a8;margin:2px 0 10px}
+.mq-insrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border:1px solid rgba(86,5,145,.3);border-radius:10px;background:rgba(86,5,145,.05);margin-bottom:8px}
+.mq-insrow-name{flex:1 1 160px;min-width:0;font-size:14px;font-weight:700;color:var(--mq-tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mq-insrow-lab{font-size:12.5px;color:var(--mq-tx-2)}

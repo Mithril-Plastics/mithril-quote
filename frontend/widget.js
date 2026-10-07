@@ -1241,14 +1241,6 @@ function renderQuote() {
         '<button class="mq-inc">+</button></div>' +
         (it.pct > 0 ? '<span class="mq-badge">−' + it.pct + '%</span>' : '') + '</div>' +
         '<div class="mq-fl-price mq-line-total">$' + it.lineTotal.toFixed(2) + '</div>' +
-        (S.process === 'FDM' ?
-          '<div class="mq-ins">' +
-            '<span class="mq-ins-label">Heat-set inserts per part <em>$' + INSERT_FEE.toFixed(2) + ' each</em></span>' +
-            '<div class="mq-stepper mq-ins-stepper"><button type="button" class="mq-ins-dec" aria-label="Fewer inserts per part">−</button>' +
-            '<input type="number" min="0" max="' + INSERT_MAX + '" value="' + (it.file.inserts || 0) + '" class="mq-ins-inp" aria-label="Heat-set inserts per part">' +
-            '<button type="button" class="mq-ins-inc" aria-label="More inserts per part">+</button></div>' +
-            '<span class="mq-ins-sum"></span>' +
-          '</div>' : '') +
       '</div>';
     }).join('') + '</div>' +
 
@@ -1267,6 +1259,24 @@ function renderQuote() {
         }).join('') +
       '</div>';
     })() +
+
+    /* ── Heat-set inserts (FDM): one count per part, per file ── */
+    (S.process === 'FDM' ?
+      '<div class="mq-inserts" id="mq-inserts">' +
+        '<p class="mq-speed-label">Heat-set inserts <em>$' + INSERT_FEE.toFixed(2) + ' each + $' + INSERT_SETUP.toFixed(2) + ' setup per order</em></p>' +
+        '<p class="mq-inserts-help">Threaded brass inserts installed by us. Enter how many <strong>each part</strong> needs — leave at 0 for none. We confirm thread sizes at review.</p>' +
+        items.map(function(it, i) {
+          return '<div class="mq-insrow" data-idx="' + i + '">' +
+            '<span class="mq-insrow-name">' + esc(it.file.fileName) + '</span>' +
+            '<label class="mq-insrow-lab">Inserts per part</label>' +
+            '<div class="mq-stepper mq-ins-stepper"><button type="button" class="mq-ins-dec" aria-label="Fewer inserts per part">−</button>' +
+            '<input type="number" min="0" max="' + INSERT_MAX + '" value="' + (it.file.inserts || 0) + '" class="mq-ins-inp" aria-label="Heat-set inserts per part for ' + esc(it.file.fileName) + '">' +
+            '<button type="button" class="mq-ins-inc" aria-label="More inserts per part">+</button></div>' +
+            '<span class="mq-ins-sum"></span>' +
+          '</div>';
+        }).join('') +
+      '</div>'
+    : '') +
 
     /* ── Other requirements (not priced online) ── */
     '<details class="mq-reqopts" id="mq-reqopts"' + (S.requests.length ? ' open' : '') + '>' +
@@ -1381,7 +1391,7 @@ function renderQuote() {
 
   // ── Heat-set inserts (per file, per part) + request-only options ─────────────
   function updInsRow(idx) {
-    var it = items[idx], row = document.querySelector('#mq-lines .mq-fl[data-idx="' + idx + '"]');
+    var it = items[idx], row = document.querySelector('#mq-inserts .mq-insrow[data-idx="' + idx + '"]');
     if (!row) return;
     var inp = row.querySelector('.mq-ins-inp'), sum = row.querySelector('.mq-ins-sum');
     if (!inp || !sum) return;
@@ -1396,15 +1406,18 @@ function renderQuote() {
     mqTrack('inserts_changed', { mq_inserts_total: insTotal(), mq_insert_fee: insertFee(), mq_currency: 'USD' });
   }
   items.forEach(function(it, i) { updInsRow(i); });
-  document.getElementById('mq-lines').addEventListener('click', function(e) {
-    var row = e.target.closest('.mq-fl'); if (!row) return;
-    var idx = +row.dataset.idx, inp = row.querySelector('.mq-ins-inp');
-    if (e.target.classList.contains('mq-ins-dec')) setInserts(idx, +inp.value - 1);
-    if (e.target.classList.contains('mq-ins-inc')) setInserts(idx, +inp.value + 1);
-  });
-  document.getElementById('mq-lines').addEventListener('change', function(e) {
-    if (e.target.classList.contains('mq-ins-inp')) { var row = e.target.closest('.mq-fl'); if (row) setInserts(+row.dataset.idx, +e.target.value); }
-  });
+  var insBox = document.getElementById('mq-inserts');
+  if (insBox) {
+    insBox.addEventListener('click', function(e) {
+      var row = e.target.closest('.mq-insrow'); if (!row) return;
+      var idx = +row.dataset.idx, inp = row.querySelector('.mq-ins-inp');
+      if (e.target.classList.contains('mq-ins-dec')) setInserts(idx, +inp.value - 1);
+      if (e.target.classList.contains('mq-ins-inc')) setInserts(idx, +inp.value + 1);
+    });
+    insBox.addEventListener('change', function(e) {
+      if (e.target.classList.contains('mq-ins-inp')) { var row = e.target.closest('.mq-insrow'); if (row) setInserts(+row.dataset.idx, +e.target.value); }
+    });
+  }
   document.getElementById('mq-reqopts').addEventListener('change', function(e) {
     var id = e.target && e.target.getAttribute && e.target.getAttribute('data-req'); if (!id) return;
     var i = S.requests.indexOf(id);
