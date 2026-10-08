@@ -910,6 +910,8 @@ var REQUEST_OPTS    = [          // not priced online — customer ticks them, w
   { id: 'tolerance',  label: 'Tight tolerance requirements' },
   { id: 'color',      label: 'Specific color match' },
 ];
+var TRANSIT_TEXT    = 'Arrives about 2–5 business days after it ships.';   // shown for shipped orders; edit to match your carrier
+var NON_LOWER48     = ['AK','HI','PR','GU','VI','AS','MP','AA','AE','AP'];     // flat-rate shipping covers the lower 48; these get confirmed at review
 var MIN_ORDER       = 35;        // parts subtotal is raised to this if lower ("small-order adjustment")
 var FREE_SHIP_OVER  = 150;       // Small/Medium shipping is free when parts subtotal reaches this
 var LOCAL_FEE       = 10;        // flat fee, hand delivery within the ZIP list below
@@ -1173,6 +1175,10 @@ function renderQuote() {
       var base = shippingQuote(items, S.process, S.material, S.infill, grandTotal(), 'ship', '');
       shipPrice.textContent = base.review ? 'Oversize — quoted at review' : (base.free ? 'FREE · ' + base.tier + ' package' : '$' + base.amount.toFixed(2) + ' · ' + base.tier + ' package');
     }
+    var sn = document.getElementById('mq-ship-note');
+    if (sn) sn.textContent = sh.review ? 'This order is oversize or heavy, so we\'ll confirm the exact shipping cost before you pay anything.'
+      : S.shipMethod === 'local' ? 'Hand-delivered by our team inside our local delivery area. Flat fee, no surprises.'
+      : 'Flat-rate shipping anywhere in the continental U.S.; the price shown is the price you pay. ' + TRANSIT_TEXT;
     var nudge = document.getElementById('mq-ship-nudge');
     if (nudge) {
       var b2 = shippingQuote(items, S.process, S.material, S.infill, grandTotal(), 'ship', '');
@@ -1325,6 +1331,7 @@ function renderQuote() {
         '<input class="mq-inp mq-zip-inp" id="mq-zip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="e.g. 92821" value="' + esc(S.zip) + '">' +
         '<span class="mq-zip-msg" id="mq-zip-msg" role="status"></span>' +
       '</div>' +
+      '<p class="mq-speed-note" id="mq-ship-note"></p>' +
       '<p class="mq-speed-note" id="mq-ship-nudge"></p>' +
     '</div>' +
 
@@ -1668,6 +1675,7 @@ function renderQuote() {
             ins:       insertFee() > 0 ? insertFee().toFixed(2) : null,
             insDesc:   insertFee() > 0 ? insTotal() + ' × $' + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup' : '',
             requests:  reqLabels(),
+            transit:   (ship().method === 'ship' && !ship().review) ? TRANSIT_TEXT : '',
             minOrder:  MIN_ORDER,
             shipLabel: ship().label,
             shipping:  ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2)),
@@ -1712,7 +1720,7 @@ function renderQuote() {
               (rushFee() > 0 ? '<div class="mq-success-shipping-row"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span>$' + rushFee().toFixed(2) + '</span></div>' : '') +
               '<div class="mq-success-shipping-row"><span>' + ship().label + '</span><span>' + (ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2))) + '</span></div>' +
               '<div class="mq-success-total-row"><span>Order Total' + (ship().review ? ' (before shipping)' : '') + '</span><span>$' + orderTotal().toFixed(2) + '</span></div>' +
-              '<div class="mq-success-note"><strong>' + (S.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery:</strong> est. ship by ' + esc(shipByText()) + '</div>' +
+              '<div class="mq-success-note"><strong>' + (S.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery:</strong> est. ship by ' + esc(shipByText()) + (ship().method === 'ship' && !ship().review ? '. ' + TRANSIT_TEXT : '') + '</div>' +
               (S.requests.length ? '<div class="mq-success-note"><strong>Priced at review:</strong> ' + esc(reqLabels().join('; ')) + '</div>' : '') +
               (note ? '<div class="mq-success-note"><strong>Notes:</strong> ' + note + '</div>' : '') +
             '</div>' +
@@ -1723,6 +1731,7 @@ function renderQuote() {
               '<button class="mq-ship-trigger" id="mq-ship-trigger">📦 I\'m ready to place my order</button>' +
               '<div class="mq-ship-form" id="mq-ship-form" style="display:none">' +
                 '<p class="mq-ship-heading">Where are we shipping to?</p>' +
+                '<p class="mq-footnote mq-ship-flatnote">' + (S.shipMethod === 'local' ? 'Local delivery to the ZIP you entered earlier.' : 'Your quoted shipping is flat-rate within the continental U.S.') + '</p>' +
                 '<input class="mq-inp" id="mq-s-name"    type="text" placeholder="Full name *" value="' + esc(name) + '">' +
                 '<input class="mq-inp" id="mq-s-company" type="text" placeholder="Company" value="' + esc(company) + '">' +
                 '<input class="mq-inp" id="mq-s-addr1"   type="text" placeholder="Address line 1 *" autocomplete="address-line1">' +
@@ -1732,6 +1741,7 @@ function renderQuote() {
                   '<input class="mq-inp" id="mq-s-state" type="text" placeholder="State *" maxlength="2" autocomplete="address-level1">' +
                   '<input class="mq-inp" id="mq-s-zip"   type="text" placeholder="ZIP *" maxlength="10" autocomplete="postal-code">' +
                 '</div>' +
+                '<p class="mq-ship-region" id="mq-ship-region" role="status" style="display:none">Heads-up: this address is outside the continental U.S., so we\'ll confirm the shipping cost with you before invoicing. Your total may change.</p>' +
                 '<div id="mq-ship-err"></div>' +
                 '<button class="mq-cta" id="mq-ship-btn">Confirm Order →</button>' +
                 '<p class="mq-footnote">We\'ll review your order and send an invoice to <strong>' + esc(email) + '</strong> before any charges are made.</p>' +
@@ -1750,6 +1760,9 @@ function renderQuote() {
             document.getElementById('mq-s-addr1').focus();
           });
 
+          document.getElementById('mq-s-state').addEventListener('input', function() {
+            document.getElementById('mq-ship-region').style.display = (S.shipMethod === 'ship' && NON_LOWER48.indexOf(this.value.trim().toUpperCase()) !== -1) ? 'block' : 'none';
+          });
           document.getElementById('mq-ship-btn').addEventListener('click', function() {
             var addr1El   = document.getElementById('mq-s-addr1');
             var cityEl    = document.getElementById('mq-s-city');
@@ -1777,13 +1790,16 @@ function renderQuote() {
               document.getElementById('mq-s-addr2').value.trim(),
               cityEl.value.trim() + ', ' + stateEl.value.trim().toUpperCase() + ' ' + zipEl.value.trim()
             ].filter(Boolean).join(', '));
+            var offRegion = S.shipMethod === 'ship' && NON_LOWER48.indexOf(stateEl.value.trim().toUpperCase()) !== -1;
+            sfd.append('shipping_quoted', ship().review ? 'QUOTE AT REVIEW (oversize)' : (ship().method === 'local' ? 'Local delivery $' + shipAmt().toFixed(2) : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2)) + ' flat (' + ship().tier + ')'));
+            if (offRegion) sfd.append('needs_manual_review_shipping', 'YES — destination outside the continental U.S. (' + stateEl.value.trim().toUpperCase() + '); confirm shipping cost and send updated total before invoicing');
             fetch(FORMSPREE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: sfd })
               .then(function(res) { return res.json().catch(function() { return {}; }).then(function(d) { return { ok: res.ok, data: d }; }); })
               .then(function(r) {
                 if (r.ok) {
                   document.getElementById('mq-ship-form').style.display    = 'none';
                   document.getElementById('mq-ship-success').style.display = 'block';
-                  mqTrack('order_confirmed', { mq_value: grandTotal(), mq_currency: 'USD' });
+                  mqTrack('order_confirmed', { mq_value: grandTotal(), mq_currency: 'USD', mq_offregion: offRegion });
                 } else {
                   shipBtn.disabled = false; shipBtn.textContent = 'Confirm Order →';
                   shipErrEl.innerHTML = '<p class="mq-submit-err">' + esc(r.data.error || 'Submission failed — please try again.') + '</p>';
@@ -2016,7 +2032,7 @@ window.mqDownloadPDF = function() {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(90, 90, 90);
-    doc.text((d.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery — est. ship by ' + d.shipBy, margin, y);
+    doc.text((d.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery — est. ship by ' + d.shipBy + (d.transit ? '. ' + d.transit : ''), margin, y);
     y += 9;
     if (d.requests && d.requests.length) {
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(30, 30, 30);
