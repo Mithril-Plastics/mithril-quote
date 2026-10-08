@@ -4,6 +4,10 @@ const API_BASE      = _cfg.API_BASE      || 'https://YOUR-BACKEND.railway.app';
 
 const MOCK_MODE     = _cfg.MOCK_MODE     !== undefined ? _cfg.MOCK_MODE : true;
 const FORMSPREE_URL = _cfg.FORMSPREE_URL || 'https://formspree.io/f/mojrlbvn';
+// "Email me this quote" posts here. Defaults to the same form; point it at a second
+// Formspree form (window.MQ.FORMSPREE_SAVE_URL) to give saved quotes their own auto-reply text.
+const FORMSPREE_SAVE_URL = _cfg.FORMSPREE_SAVE_URL || FORMSPREE_URL;
+const SUBMIT_LABEL  = 'Submit for Review — No Payment Now';
 
 // Customer confirmation emails are handled by Formspree's auto-reply feature.
 
@@ -107,7 +111,7 @@ function esc(str) {
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 const S = {
-  files: [],     // { fileName, bbox, volume, fdmFits, slaFits, qty, selected, thumbnail, geometry, originalFile }
+  files: [],     // { fileName, ext, unit, rawBbox, rawVolume, bbox(mm), volume(cm³), hint, fdmFits, slaFits, qty, selected, thumbnail, geometry, originalFile }
   process: null,
   material: null,
   materialLabel: '',
@@ -115,7 +119,51 @@ const S = {
   globalQty: 1,
   quoteItems: null, // live reference to renderQuote's items array for order total updates
   infill: 35,
+  speed: 'standard',   // 'standard' | 'expedited'
+  shipMethod: 'ship',  // 'ship' | 'local'
+  zip: '',
 };
+
+// ── ANALYTICS ────────────────────────────────────────────────────────────────
+// Pushes events to window.dataLayer. Google Tag Manager (installed site-wide)
+// reads them and routes to GA4 / Bing / Ads — this file never talks to a
+// vendor directly, so consent mode and the cookie banner still apply.
+//
+// PRIVACY RULE: events carry counts, choices and totals ONLY. Never add file
+// names, names, emails, phone numbers, company names or free-text notes.
+var MQ_SID  = Math.random().toString(36).slice(2, 10);   // per page-load, anonymous
+var MQ_T0   = Date.now();
+var MQ_SRC  = document.getElementById('mq-modal-overlay') ? 'modal' : 'page';
+var MQ_SEEN = {};                                          // steps already viewed
+var MQ_LAST = 'upload';                                     // most recent step (read by floating-widget.js on close)
+function mqTrack(name, params) {
+  try {
+    var e = {
+      event: 'mq_' + name,
+      mq_source: MQ_SRC,                                   // 'page' = /instant-quote, 'modal' = floating button
+      mq_session: MQ_SID,
+      mq_elapsed_s: Math.round((Date.now() - MQ_T0) / 1000),
+    };
+    for (var k in (params || {})) if (Object.prototype.hasOwnProperty.call(params, k)) e[k] = params[k];
+    (window.dataLayer = window.dataLayer || []).push(e);
+  } catch (err) { /* tracking must never break the quote flow */ }
+}
+
+// Campaign source for the lead email (utm_*, gclid, msclkid). Uses what
+// mithril-track.js stored for this tab, else whatever is in the current URL.
+// Business data about the ad click — contains nothing about the visitor.
+function mqAttribution(fd) {
+  try {
+    var a = {};
+    try { a = JSON.parse(sessionStorage.getItem('mith_attr') || '{}') || {}; } catch (e) {}
+    var q = new URLSearchParams(location.search);
+    ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','msclkid'].forEach(function(k) {
+      if (!a[k] && q.get(k)) a[k] = q.get(k).slice(0, 120);
+    });
+    Object.keys(a).forEach(function(k) { if (a[k]) fd.append('src_' + k, a[k]); });
+    fd.append('src_page', location.pathname);
+  } catch (e) {}
+}
 
 // ── SESSION PERSISTENCE ───────────────────────────────────────────────────────
 function saveSession() {
@@ -137,6 +185,11 @@ function show(id) {
   document.querySelectorAll('.mq-screen').forEach(function(el) { el.classList.remove('on'); });
   document.getElementById('mq-' + id).classList.add('on');
   var n = STEP_MAP[id];
+  if (id !== 'loading') {
+    mqTrack('step', { mq_step: id, mq_first_view: !MQ_SEEN[id] });
+    MQ_SEEN[id] = true;
+    MQ_LAST = id;
+  }
   [1,2,3,4].forEach(function(i) {
     var el = document.getElementById('mq-s' + i);
     el.classList.remove('active', 'done');
@@ -242,9 +295,24 @@ function renderCards() {
           '<div class="mq-card-thumb">' + thumbHtml + '</div>' +
           '<div class="mq-card-info">' +
             '<div class="mq-card-dims">' + f.bbox.x + ' × ' + f.bbox.y + ' × ' + f.bbox.z + ' mm</div>' +
+            '<div class="mq-card-dims-in">' + inch(f.bbox.x) + ' × ' + inch(f.bbox.y) + ' × ' + inch(f.bbox.z) + ' in</div>' +
             '<div class="mq-card-vol">' + volMm3 + ' mm³</div>' +
+            '<label class="mq-unit-pick">File unit ' +
+              '<select class="mq-unit-sel" data-unit-sel="' + i + '" aria-label="Units used in ' + esc(f.fileName) + '">' +
+                Object.keys(UNITS).map(function(u) {
+                  return '<option value="' + u + '"' + (u === f.unit ? ' selected' : '') + '>' + UNITS[u].label + ' (' + UNITS[u].name + ')</option>';
+                }).join('') +
+              '</select>' +
+            '</label>' +
           '</div>' +
         '</div>' +
+
+        /* ── Unit sanity hint (only when the size looks wrong) ── */
+        (f.hint
+          ? '<div class="mq-unit-hint" role="alert">' + esc(f.hint.msg) +
+              ' <button type="button" class="mq-unit-hint-btn" data-unit-switch="' + i + '" data-unit-to="' + f.hint.suggest + '">Switch to ' + UNITS[f.hint.suggest].name + '</button>' +
+            '</div>'
+          : '') +
 
         /* ── Row 3: qty stepper ── */
         '<div class="mq-card-footer">' +
@@ -268,6 +336,13 @@ function renderCards() {
       card.classList.toggle('selected', cb.checked);
       updateHeader();
     });
+  });
+
+  grid.querySelectorAll('[data-unit-sel]').forEach(function(sel) {
+    sel.addEventListener('change', function() { setFileUnit(+sel.dataset.unitSel, sel.value, 'dropdown'); });
+  });
+  grid.querySelectorAll('[data-unit-switch]').forEach(function(btn) {
+    btn.addEventListener('click', function() { setFileUnit(+btn.dataset.unitSwitch, btn.dataset.unitTo, 'hint'); });
   });
 
   grid.querySelectorAll('[data-del]').forEach(function(btn) {
@@ -296,6 +371,15 @@ function renderCards() {
   });
 
   updateHeader();
+}
+
+function inch(mm) { return +(mm / 25.4).toFixed(2); }
+
+function setFileUnit(idx, unit, via) {
+  if (!S.files[idx] || !UNITS[unit]) return;
+  mqTrack('unit_changed', { mq_from: S.files[idx].unit, mq_to: unit, mq_via: via || 'dropdown', mq_had_hint: !!S.files[idx].hint });
+  applyUnit(S.files[idx], unit);
+  renderCards();
 }
 
 function applyCardQty(idx, val) {
@@ -397,17 +481,82 @@ function computeVolumeFromGeo(geo) {
     for (var i = 0; i < pos.count; i += 3) tri(i, i+1, i+2);
   }
 
+  // RAW values: volume in cm³ and bbox in mm *as if the file were in mm*.
+  // Not rounded here — applyUnit() rescales by the file's real unit first,
+  // then rounds, so tiny (inch/meter-scale) models don't lose precision.
   return {
-    volume: +(Math.abs(vol) / 6000).toFixed(4),
-    bbox: { x:+(maxX-minX).toFixed(2), y:+(maxY-minY).toFixed(2), z:+(maxZ-minZ).toFixed(2) },
+    volume: Math.abs(vol) / 6000,
+    bbox: { x: maxX-minX, y: maxY-minY, z: maxZ-minZ },
   };
 }
 
-function extractFirstGeometry(object) {
-  var geo = null;
-  object.traverse(function(child) { if (!geo && child.isMesh && child.geometry) geo = child.geometry; });
-  if (!geo) throw new Error('No geometry found');
+// Merge every mesh in an OBJ / glTF scene into one geometry, applying each
+// mesh's world transform. (Previously only the first mesh was read, so
+// multi-body files were under-quoted.)
+function extractMergedGeometry(object) {
+  object.updateMatrixWorld(true);
+  var chunks = [], total = 0;
+  var v = new THREE.Vector3();
+  object.traverse(function(child) {
+    if (!child.isMesh || !child.geometry || !child.geometry.attributes.position) return;
+    var pos = child.geometry.attributes.position;
+    var idx = child.geometry.index;
+    var n   = idx ? idx.count : pos.count;
+    var arr = new Float32Array(n * 3);
+    var flip = child.matrixWorld.determinant() < 0; // mirrored mesh → reverse winding
+    for (var i = 0; i < n; i++) {
+      var src = i;
+      if (flip) { var r = i % 3; src = i - r + (r === 0 ? 0 : (r === 1 ? 2 : 1)); }
+      v.fromBufferAttribute(pos, idx ? idx.getX(src) : src).applyMatrix4(child.matrixWorld);
+      arr[i*3] = v.x; arr[i*3+1] = v.y; arr[i*3+2] = v.z;
+    }
+    chunks.push(arr); total += arr.length;
+  });
+  if (!total) throw new Error('No geometry found');
+  var merged = new Float32Array(total), off = 0;
+  chunks.forEach(function(c) { merged.set(c, off); off += c.length; });
+  var geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(merged, 3));
   return geo;
+}
+
+// ── UNITS ────────────────────────────────────────────────────────────────────
+// scale = millimetres per file unit.
+const UNITS = {
+  mm: { label: 'mm', name: 'millimeters', scale: 1    },
+  cm: { label: 'cm', name: 'centimeters', scale: 10   },
+  in: { label: 'in', name: 'inches',      scale: 25.4 },
+  m:  { label: 'm',  name: 'meters',      scale: 1000 },
+};
+
+function defaultUnitFor(ext) {
+  // glTF/GLB are defined in meters by spec; everything else is conventionally mm.
+  return (ext === 'glb' || ext === 'gltf') ? 'm' : 'mm';
+}
+
+// Returns { suggest, msg } when the chosen unit looks wrong, else null.
+function unitHint(f) {
+  var maxRaw = Math.max(f.rawBbox.x, f.rawBbox.y, f.rawBbox.z);
+  var maxMm  = maxRaw * UNITS[f.unit].scale;
+  if (f.unit === 'mm' && maxRaw < 25) {
+    return { suggest: 'in',
+      msg: 'This part reads as only ' + f.bbox.x + ' × ' + f.bbox.y + ' × ' + f.bbox.z + ' mm. If your file is in inches, switch the unit.' };
+  }
+  if ((f.unit === 'in' || f.unit === 'm' || f.unit === 'cm') && maxMm > 1000) {
+    return { suggest: 'mm',
+      msg: 'That makes this part over 1 meter long. If your file is in millimeters, switch the unit.' };
+  }
+  return null;
+}
+
+function applyUnit(f, unit) {
+  var s = UNITS[unit].scale;
+  f.unit   = unit;
+  f.bbox   = { x: +(f.rawBbox.x * s).toFixed(2), y: +(f.rawBbox.y * s).toFixed(2), z: +(f.rawBbox.z * s).toFixed(2) };
+  f.volume = +(f.rawVolume * s * s * s).toFixed(4);
+  f.fdmFits = fitsIn(f.bbox, 'FDM');
+  f.slaFits = fitsIn(f.bbox, 'SLA');
+  f.hint    = unitHint(f);
 }
 
 function fitsIn(bbox, process) {
@@ -429,7 +578,7 @@ function loadGeometry(buffer, ext) {
       return Promise.resolve(new THREE.PLYLoader().parse(buffer));
     case 'obj': {
       var text = new TextDecoder().decode(buffer);
-      return Promise.resolve(extractFirstGeometry(new THREE.OBJLoader().parse(text)));
+      return Promise.resolve(extractMergedGeometry(new THREE.OBJLoader().parse(text)));
     }
     case 'glb':
     case 'gltf': {
@@ -438,7 +587,7 @@ function loadGeometry(buffer, ext) {
       return new Promise(function(res, rej) {
         new THREE.GLTFLoader().load(url, function(gltf) {
           URL.revokeObjectURL(url);
-          res(extractFirstGeometry(gltf.scene));
+          res(extractMergedGeometry(gltf.scene));
         }, undefined, rej);
       });
     }
@@ -454,18 +603,19 @@ function parseOneFile(file) {
     return loadGeometry(buffer, ext);
   }).then(function(geometry) {
     var result = computeVolumeFromGeo(geometry);
-    return {
+    var f = {
       fileName: file.name,
-      bbox: result.bbox,
-      volume: result.volume,
-      fdmFits: fitsIn(result.bbox, 'FDM'),
-      slaFits: fitsIn(result.bbox, 'SLA'),
+      ext: ext,
+      rawBbox: result.bbox,      // as if mm — see computeVolumeFromGeo
+      rawVolume: result.volume,  // cm³ as if mm
       qty: S.globalQty,
       selected: true,
       thumbnail: null,
       geometry: geometry,
       originalFile: file,
     };
+    applyUnit(f, defaultUnitFor(ext));
+    return f;
   });
 }
 
@@ -489,6 +639,11 @@ function handleFiles(fileList) {
     var failed = results.filter(function(r) { return r.status === 'rejected'; }).map(function(_, i) { return supported[i].name; });
 
     S.files.push.apply(S.files, ok);
+    mqTrack('files_added', {
+      mq_files_ok: ok.length, mq_files_failed: failed.length, mq_files_unsupported: unsupported.length,
+      mq_unit_hints: ok.filter(function(f) { return f.hint; }).length,
+      mq_formats: ok.map(function(f) { return f.ext; }).filter(function(x, i, a) { return a.indexOf(x) === i; }).join(','),
+    });
     show('upload');
     renderCards();
 
@@ -568,11 +723,13 @@ document.getElementById('mq-continue').addEventListener('click', function() {
 document.getElementById('mq-back-itar').addEventListener('click', function() { show('upload'); });
 
 document.getElementById('mq-itar-decline').addEventListener('click', function() {
+  mqTrack('itar_declined');
   document.getElementById('mq-itar-contact').style.display = '';
   document.getElementById('mq-itar-decline').style.display = 'none';
 });
 
 document.getElementById('mq-itar-confirm').addEventListener('click', function() {
+  mqTrack('itar_confirmed');
   S.process = null; S.material = null; S.materialLabel = '';
   var anyFDM = S.files.some(function(f) { return f.fdmFits; });
   var anySLA = S.files.some(function(f) { return f.slaFits; });
@@ -580,6 +737,7 @@ document.getElementById('mq-itar-confirm').addEventListener('click', function() 
   // Auto-select process only when just one fits
   if (anyFDM && !anySLA) { S.process = 'FDM'; saveSession(); }
   else if (anySLA && !anyFDM) { S.process = 'SLA'; saveSession(); }
+  if (S.process) mqTrack('process_selected', { mq_process: S.process, mq_auto: true });
 
   if (S.process) {
     renderMaterials(); show('material');
@@ -621,7 +779,7 @@ function renderProcess() {
 
   ['mq-fdm', 'mq-sla'].forEach(function(id) {
     var btn = document.getElementById(id);
-    btn.onclick = function() { S.process = btn.dataset.p; saveSession(); renderMaterials(); show('material'); };
+    btn.onclick = function() { S.process = btn.dataset.p; saveSession(); mqTrack('process_selected', { mq_process: S.process, mq_auto: false }); renderMaterials(); show('material'); };
   });
 }
 
@@ -649,6 +807,7 @@ function renderMaterials() {
   helpBtn.onclick = function() {
     S.material      = 'help-me-decide';
     S.materialLabel = 'Team recommendation';
+    mqTrack('material_selected', { mq_process: S.process, mq_material: 'help-me-decide' });
     saveSession();
     buildQuote();
   };
@@ -692,7 +851,7 @@ function renderMaterials() {
           costBadge(mat.cost) +
         '</span>' +
         (mat.desc ? '<small>' + mat.desc + '</small>' : '');
-      btn.onclick = function() { S.material = mat.key; S.materialLabel = mat.label; saveSession(); buildQuote(); };
+      btn.onclick = function() { S.material = mat.key; S.materialLabel = mat.label; saveSession(); mqTrack('material_selected', { mq_process: S.process, mq_material: mat.key, mq_material_group: mat.group }); buildQuote(); };
       grid.appendChild(btn);
     });
 
@@ -712,7 +871,6 @@ function discountPct(qty) {
 }
 
 var MIN_PART_PRICE = 5.00;  // minimum base price per part
-var SHIPPING_BASE  = 6.00;  // flat shipping added to every order
 
 function calcLine(file) {
   var cfg        = MOCK_RATES[S.process];
@@ -742,7 +900,123 @@ function buildQuote() {
   }
 }
 
+// ── ORDER MINIMUM + SHIPPING ─────────────────────────────────────────────────
+// Tunables — change these numbers, nothing else needs touching.
+var INSERT_FEE      = 1.5;       // heat-set insert: price per insert (FDM only)
+var INSERT_SETUP    = 7.5;       // flat setup, charged once per order that has any inserts
+var INSERT_MAX      = 20;        // max inserts per part in the quote UI
+var REQUEST_OPTS    = [          // not priced online — customer ticks them, we quote at review
+  { id: 'inspection', label: 'Inspection report / certificate of conformance' },
+  { id: 'tolerance',  label: 'Tight tolerance requirements' },
+  { id: 'color',      label: 'Specific color match' },
+];
+var TRANSIT_TEXT    = 'Arrives about 2–5 business days after it ships.';   // shown for shipped orders; edit to match your carrier
+var NON_LOWER48     = ['AK','HI','PR','GU','VI','AS','MP','AA','AE','AP'];     // flat-rate shipping covers the lower 48; these get confirmed at review
+var MIN_ORDER       = 35;        // parts subtotal is raised to this if lower ("small-order adjustment")
+var FREE_SHIP_OVER  = 150;       // Small/Medium shipping is free when parts subtotal reaches this
+var LOCAL_FEE       = 10;        // flat fee, hand delivery within the ZIP list below
+var PACK_G          = 100;       // packaging weight added to every shipment (grams)
+var PACK_IN         = 2;         // packaging added to the longest side (inches)
+var SHIP_TIERS = [               // first tier that fits BOTH weight and longest side wins
+  { name: 'Small',  maxG: 454,  maxIn: 8,  price: 8,  freeEligible: true  },   // up to 1 lb
+  { name: 'Medium', maxG: 2268, maxIn: 14, price: 14, freeEligible: true  },   // up to 5 lb
+  { name: 'Large',  maxG: 6804, maxIn: 24, price: 24, freeEligible: false },   // up to 15 lb
+];                               // anything bigger → "quoted at review"
+
+// ZIP codes within ~15 mi (straight line) of Brea, CA. Edit freely: add or delete codes.
+var LOCAL_ZIPS = ('' +
+  '90201 90239 90240 90241 90242 90601 90602 90603 90604 90605 90606 90607 90608 90609 90610 90612 '+
+  '90620 90621 90622 90623 90624 90630 90631 90632 90633 90637 90638 90639 90640 90650 90651 90652 '+
+  '90659 90660 90661 90662 90670 90671 90680 90701 90702 90703 90706 90707 90712 90713 90714 90715 '+
+  '90716 90720 90721 90740 90808 91702 91706 91709 91710 91714 91715 91716 91722 91723 91724 91731 '+
+  '91732 91733 91734 91735 91740 91744 91745 91746 91747 91748 91749 91765 91766 91767 91768 91769 '+
+  '91770 91773 91788 91789 91790 91791 91792 91793 91795 91797 92602 92647 92655 92683 92684 92685 '+
+  '92701 92702 92703 92704 92705 92706 92707 92708 92711 92712 92725 92728 92735 92780 92781 92782 '+
+  '92801 92802 92803 92804 92805 92806 92807 92808 92809 92811 92812 92814 92815 92816 92817 92821 '+
+  '92822 92823 92825 92831 92832 92833 92834 92835 92836 92837 92838 92840 92841 92842 92843 92844 '+
+  '92845 92846 92850 92856 92857 92859 92861 92862 92863 92864 92865 92866 92867 92868 92869 92870 '+
+  '92871 92885 92886 92887 '
+).split(/\s+/).filter(Boolean);
+
+function zipIsLocal(z) { return /^\d{5}$/.test(z) && LOCAL_ZIPS.indexOf(z) !== -1; }
+
+// Estimated shipment weight in grams for the order (deliberately a little high).
+function orderWeightG(items, process, material, infill) {
+  var d = DENSITIES[process], dens = d.mats[material] || 1.2;
+  var fill = process === 'FDM' ? Math.min(1, 0.30 + 0.70 * (infill / 100)) : d.fillFactor;   // shells + infill
+  return Math.round(items.reduce(function(s, it) { return s + it.file.volume * fill * dens * it.file.qty; }, 0) + PACK_G);
+}
+function orderLongestIn(items) {
+  return +(Math.max.apply(null, items.map(function(it) { return Math.max(it.file.bbox.x, it.file.bbox.y, it.file.bbox.z); })) / 25.4 + PACK_IN).toFixed(1);
+}
+// → { method, label, amount|null, tier, free, review, grams, inches }
+function shippingQuote(items, process, material, infill, partsSubtotal, method, zip) {
+  var g = orderWeightG(items, process, material, infill), inch = orderLongestIn(items);
+  if (method === 'local' && zipIsLocal(zip)) {
+    return { method: 'local', label: 'Local delivery', amount: LOCAL_FEE, tier: 'Local', free: false, review: false, grams: g, inches: inch };
+  }
+  var tier = SHIP_TIERS.find(function(t) { return g <= t.maxG && inch <= t.maxIn; });
+  if (!tier) return { method: 'ship', label: 'Shipping', amount: null, tier: 'Oversize', free: false, review: true, grams: g, inches: inch };
+  var free = tier.freeEligible && partsSubtotal >= FREE_SHIP_OVER;
+  return { method: 'ship', label: 'Shipping (' + tier.name + ' package)', amount: free ? 0 : tier.price, tier: tier.name, free: free, review: false, grams: g, inches: inch,
+           listPrice: tier.price, awayFromFree: tier.freeEligible && !free ? +(FREE_SHIP_OVER - partsSubtotal).toFixed(2) : 0 };
+}
+
+// ── DELIVERY SPEED + SHIP-BY DATE ────────────────────────────────────────────
+// Tunables — change these numbers, nothing else needs touching.
+var RUSH_PCT         = 0.35;                   // Expedited surcharge on the parts subtotal
+var STD_MIN_DAYS     = 3;                      // Standard: fastest business days to ship (small jobs)
+var EXPEDITED_DAYS   = 2;                      // Expedited: business days to ship
+var CUTOFF_HOUR_PT   = 12;                     // orders before 12:00 PM Pacific start the same business day
+var HANDLING_DAYS    = 2;                      // post-processing, QC, packing added to print time
+var HOURS_PER_DAY    = 16;                     // productive print hours per machine per day
+var MACHINES         = { FDM: 2, SLA: 1 };     // printers that can run in parallel (FDM: X2D + A1, SLA: Photon)
+var CLOSED_DATES     = [];                     // shop-closed days, e.g. ['2026-11-26', '2026-12-25']
+
+// "Now" in Pacific time, independent of the visitor's own time zone.
+function ptNow() {
+  var parts = {};
+  new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date()).forEach(function(p) { parts[p.type] = p.value; });
+  return { date: new Date(Date.UTC(+parts.year, +parts.month - 1, +parts.day, 12)), hour: +parts.hour };
+}
+function isBizDay(d) {
+  var w = d.getUTCDay();
+  return w !== 0 && w !== 6 && CLOSED_DATES.indexOf(d.toISOString().slice(0, 10)) === -1;
+}
+function nextBizDay(d) { var x = new Date(d.getTime()); while (!isBizDay(x)) x.setUTCDate(x.getUTCDate() + 1); return x; }
+function addBizDays(d, n) {
+  var x = new Date(d.getTime());
+  while (n > 0) { x.setUTCDate(x.getUTCDate() + 1); if (isBizDay(x)) n--; }
+  return x;
+}
+function fmtDay(d)  { return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }); }
+function fmtLong(d) { return d.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }); }
+
+// items: [{ file: { volume, qty } }]. Pure function of the order + the clock.
+function deliveryEstimate(items, process) {
+  var cfg   = MOCK_RATES[process];
+  var hours = items.reduce(function(s, it) { return s + (it.file.volume / cfg.cm3PerHr) * it.file.qty; }, 0);
+  var prodDays = Math.max(1, Math.ceil(hours / (HOURS_PER_DAY * (MACHINES[process] || 1))));
+  var stdDays  = Math.max(STD_MIN_DAYS, prodDays + HANDLING_DAYS);
+
+  var now = ptNow();
+  var startsToday = isBizDay(now.date) && now.hour < CUTOFF_HOUR_PT;
+  var start = startsToday ? now.date : nextBizDay(new Date(now.date.getTime() + 86400000));
+
+  return {
+    hours: +hours.toFixed(1), prodDays: prodDays, startsToday: startsToday, start: start,
+    standard:  { days: stdDays,                           date: addBizDays(start, stdDays) },
+    expedited: { days: Math.min(EXPEDITED_DAYS, stdDays), date: addBizDays(start, Math.min(EXPEDITED_DAYS, stdDays)),
+                 review: prodDays > 1 },                  // too much print time for a guaranteed 2-day turn → confirm by hand
+    large: stdDays > 5,                                   // beyond the "3-5 day" promise
+  };
+}
+
 function renderHelpDecideQuote(eligible) {
+  mqTrack('quote_viewed', { mq_process: S.process, mq_material: 'help-me-decide', mq_files: eligible.length, mq_value: 0, mq_currency: 'USD' });
   var fileList = eligible.map(function(f) {
     return '<div class="mq-fl">' +
       '<div><div class="mq-fl-name">' + esc(f.fileName) + '</div>' +
@@ -804,11 +1078,13 @@ function renderHelpDecideQuote(eligible) {
     if (!name)  { nameEl.classList.add('error'); }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { emailEl.classList.add('error'); }
     if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      mqTrack('submit_invalid', { mq_path: 'help-me-decide' });
       errEl.innerHTML = '<p class="mq-submit-err">Please fill in the required fields.</p>'; return;
     }
 
     var btn = document.getElementById('mq-req-btn');
     btn.disabled = true; btn.textContent = 'Submitting…';
+    mqTrack('submit_attempt', { mq_path: 'help-me-decide' });
 
     var fd = new FormData();
     fd.append('name',     name);
@@ -821,6 +1097,7 @@ function renderHelpDecideQuote(eligible) {
     fd.append('parts_total', 'To be quoted');
     fd.append('lead_time',   'To be confirmed after material selection');
     if (note) fd.append('note', note);
+    mqAttribution(fd);
     eligible.forEach(function(f) { if (f.originalFile) fd.append('attachment', f.originalFile, f.fileName); });
 
     fetch(FORMSPREE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
@@ -830,13 +1107,16 @@ function renderHelpDecideQuote(eligible) {
           document.getElementById('mq-form-body').style.display = 'none';
           document.getElementById('mq-req-btn').style.display   = 'none';
           document.getElementById('mq-success').style.display   = '';
+          mqTrack('submit_success', { mq_path: 'help-me-decide', mq_process: S.process, mq_files: eligible.length, mq_value: 0, mq_currency: 'USD' });
         } else {
           btn.disabled = false; btn.textContent = 'Request Material Recommendation →';
+          mqTrack('submit_error', { mq_path: 'help-me-decide', mq_reason: 'server' });
           errEl.innerHTML = '<p class="mq-submit-err">Something went wrong. Please try again.</p>';
         }
       })
       .catch(function() {
         btn.disabled = false; btn.textContent = 'Request Material Recommendation →';
+        mqTrack('submit_error', { mq_path: 'help-me-decide', mq_reason: 'network' });
         errEl.innerHTML = '<p class="mq-submit-err">Network error. Please try again.</p>';
       });
   });
@@ -851,15 +1131,95 @@ function renderQuote() {
     return;
   }
 
+  S.requests = S.requests || [];
+  eligible.forEach(function(f) { if (S.process !== 'FDM') f.inserts = 0; else f.inserts = f.inserts || 0; });
   var items = eligible.map(function(f) { return Object.assign({ file: f }, calcLine(f)); });
   S.quoteItems = items;
 
   function grandTotal() { return +items.reduce(function(s, it) { return s + it.lineTotal; }, 0).toFixed(2); }
   function filesSummary() {
     return items.map(function(it) {
-      return it.file.fileName + ' | ' + it.file.volume + ' cm³ | qty ' + it.file.qty + ' | $' + it.lineTotal.toFixed(2);
+      return it.file.fileName + ' | ' + it.file.volume + ' cm³ | qty ' + it.file.qty + ' | $' + it.lineTotal.toFixed(2) + (it.file.inserts > 0 ? ' | + ' + it.file.inserts + ' heat-set inserts/part' : '');
     }).join('\n');
   }
+
+  // Totals: parts + optional Expedited surcharge + flat shipping.
+  // Minimum order: parts are raised to MIN_ORDER; Expedited is 35% of that raised figure.
+  function minAdj()     { return +Math.max(0, MIN_ORDER - grandTotal()).toFixed(2); }
+  function partsAdj()   { return +(grandTotal() + minAdj()).toFixed(2); }
+  function insTotal()   { return items.reduce(function(s, it) { return s + (it.file.inserts || 0) * it.file.qty; }, 0); }
+  function insertFee()  { var n = insTotal(); return n > 0 ? +(n * INSERT_FEE + INSERT_SETUP).toFixed(2) : 0; }
+  function prodSub()    { return +(partsAdj() + insertFee()).toFixed(2); }          // parts (after minimum) + inserts; Expedited applies to all of it
+  function reqLabels()  { return REQUEST_OPTS.filter(function(o) { return S.requests.indexOf(o.id) !== -1; }).map(function(o) { return o.label; }); }
+  function insDetail()  { return items.filter(function(it) { return it.file.inserts > 0; }).map(function(it) { return it.file.fileName + ': ' + it.file.inserts + '/part × ' + it.file.qty; }).join('; '); }
+  function rushFee()    { return S.speed === 'expedited' ? +(prodSub() * RUSH_PCT).toFixed(2) : 0; }
+  function ship()       { return shippingQuote(items, S.process, S.material, S.infill, grandTotal(), S.shipMethod, S.zip); }
+  function shipAmt()    { return ship().amount || 0; }
+  function orderTotal() { return +(prodSub() + rushFee() + shipAmt()).toFixed(2); }
+  function est()        { return deliveryEstimate(items, S.process); }
+  function shipByText() {
+    var e = est(), t = e[S.speed];
+    return fmtDay(t.date) + (S.speed === 'expedited' && t.review ? ' (confirmed at review)' : '') + (e.large && S.speed === 'standard' ? ' (large order — confirmed at review)' : '');
+  }
+  function refreshTotals() {
+    var e = est(), fee = rushFee(), sh = ship(), adj = minAdj();
+    document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
+    var ar = document.getElementById('mq-adj-row');
+    if (ar) { ar.style.display = adj > 0 ? '' : 'none'; document.getElementById('mq-adj-fee').textContent = '$' + adj.toFixed(2); }
+    // shipping line + cards
+    var sl = document.getElementById('mq-ship-label'), sv = document.getElementById('mq-ship-val');
+    if (sl) sl.textContent = sh.label;
+    if (sv) sv.textContent = sh.review ? 'Quoted at review' : (sh.free ? 'FREE' : '$' + sh.amount.toFixed(2));
+    var shipPrice = document.getElementById('mq-ship-price-ship');
+    if (shipPrice) {
+      var base = shippingQuote(items, S.process, S.material, S.infill, grandTotal(), 'ship', '');
+      shipPrice.textContent = base.review ? 'Oversize — quoted at review' : (base.free ? 'FREE · ' + base.tier + ' package' : '$' + base.amount.toFixed(2) + ' · ' + base.tier + ' package');
+    }
+    var sn = document.getElementById('mq-ship-note');
+    if (sn) sn.textContent = sh.review ? 'This order is oversize or heavy, so we\'ll confirm the exact shipping cost before you pay anything.'
+      : S.shipMethod === 'local' ? 'Hand-delivered by our team inside our local delivery area. Flat fee, no surprises.'
+      : 'Flat-rate shipping anywhere in the continental U.S.; the price shown is the price you pay. ' + TRANSIT_TEXT;
+    var nudge = document.getElementById('mq-ship-nudge');
+    if (nudge) {
+      var b2 = shippingQuote(items, S.process, S.material, S.infill, grandTotal(), 'ship', '');
+      nudge.textContent = (S.shipMethod === 'ship' && b2.awayFromFree > 0 && b2.awayFromFree <= 100)
+        ? 'Add $' + Math.ceil(b2.awayFromFree) + ' more to your order for free shipping.' : (b2.free && S.shipMethod === 'ship' ? 'Free shipping applied (orders over $' + FREE_SHIP_OVER + ').' : '');
+    }
+    var ot0 = document.getElementById('mq-order-total-label');
+    if (ot0) ot0.textContent = sh.review ? 'Order Total (before shipping)' : 'Order Total';
+    var ir = document.getElementById('mq-ins-row');
+    if (ir) {
+      var ifee = insertFee();
+      ir.style.display = ifee > 0 ? '' : 'none';
+      document.getElementById('mq-ins-fee').textContent = '$' + ifee.toFixed(2);
+      document.getElementById('mq-ins-desc').textContent = '(' + insTotal() + ' × $' + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup)';
+    }
+    var rr = document.getElementById('mq-rush-row');
+    if (rr) { rr.style.display = fee > 0 ? '' : 'none'; document.getElementById('mq-rush-fee').textContent = '$' + fee.toFixed(2); }
+    var ot = document.getElementById('mq-order-total');
+    if (ot) ot.textContent = '$' + orderTotal().toFixed(2);
+    // speed cards
+    var sd = document.getElementById('mq-speed-date-standard'), ed = document.getElementById('mq-speed-date-expedited');
+    // Review cases are shown as targets, not promises.
+    if (sd) sd.textContent = (e.large ? 'Estimated ' : 'Ships by ') + fmtDay(e.standard.date) + (e.large ? '*' : '');
+    if (ed) ed.textContent = (e.expedited.review ? 'Target ' : 'Ships by ') + fmtDay(e.expedited.date) + (e.expedited.review ? '*' : '');
+    var ep = document.getElementById('mq-speed-price-expedited');
+    if (ep) ep.textContent = '+$' + (prodSub() * RUSH_PCT).toFixed(2) + ' (+' + Math.round(RUSH_PCT * 100) + '%)';
+    var note = document.getElementById('mq-speed-note');
+    if (note) {
+      var msg = e.startsToday ? 'Order before 12:00 PM PT today and production starts today.'
+                              : 'Production starts ' + fmtLong(e.start) + ' for orders placed now (cutoff 12:00 PM PT).';
+      if (e.large || e.expedited.review) msg += ' *Date confirmed by an engineer at review — large orders may take longer.';
+      note.textContent = msg;
+    }
+  }
+
+  mqTrack('quote_viewed', {
+    mq_speed: S.speed,
+    mq_process: S.process, mq_material: S.material, mq_files: items.length,
+    mq_qty_total: items.reduce(function(s, it) { return s + it.file.qty; }, 0),
+    mq_value: grandTotal(), mq_currency: 'USD',
+  });
 
   document.getElementById('mq-quote-body').innerHTML =
     '<div class="mq-quote-meta"><strong id="mq-meta-txt">' + S.process + ' · ' + S.materialLabel + (S.process === 'FDM' ? ' · ' + S.infill + '% infill' : '') + '</strong></div>' +
@@ -906,9 +1266,81 @@ function renderQuote() {
       '</div>';
     })() +
 
+    /* ── Heat-set inserts (FDM): one count per part, per file ── */
+    (S.process === 'FDM' ?
+      '<div class="mq-inserts" id="mq-inserts">' +
+        '<p class="mq-speed-label">Heat-set inserts <em>$' + INSERT_FEE.toFixed(2) + ' each + $' + INSERT_SETUP.toFixed(2) + ' setup per order</em></p>' +
+        '<p class="mq-inserts-help">Threaded brass inserts installed by us. Enter how many <strong>each part</strong> needs — leave at 0 for none. We confirm thread sizes at review.</p>' +
+        items.map(function(it, i) {
+          return '<div class="mq-insrow" data-idx="' + i + '">' +
+            '<span class="mq-insrow-name">' + esc(it.file.fileName) + '</span>' +
+            '<label class="mq-insrow-lab">Inserts per part</label>' +
+            '<div class="mq-stepper mq-ins-stepper"><button type="button" class="mq-ins-dec" aria-label="Fewer inserts per part">−</button>' +
+            '<input type="number" min="0" max="' + INSERT_MAX + '" value="' + (it.file.inserts || 0) + '" class="mq-ins-inp" aria-label="Heat-set inserts per part for ' + esc(it.file.fileName) + '">' +
+            '<button type="button" class="mq-ins-inc" aria-label="More inserts per part">+</button></div>' +
+            '<span class="mq-ins-sum"></span>' +
+          '</div>';
+        }).join('') +
+      '</div>'
+    : '') +
+
+    /* ── Other requirements (not priced online) ── */
+    '<details class="mq-reqopts" id="mq-reqopts"' + (S.requests.length ? ' open' : '') + '>' +
+      '<summary>Need an inspection report, tight tolerances or a color match? <em>quoted at review</em></summary>' +
+      '<p class="mq-reqopts-help">These aren\'t priced instantly. Tick what you need and we\'ll confirm the price before anything is charged.</p>' +
+      REQUEST_OPTS.map(function(o) {
+        return '<label class="mq-reqopt"><input type="checkbox" data-req="' + o.id + '"' + (S.requests.indexOf(o.id) !== -1 ? ' checked' : '') + '> <span>' + esc(o.label) + '</span></label>';
+      }).join('') +
+    '</details>' +
+
+    /* ── Delivery speed ── */
+    '<div class="mq-speed" id="mq-speed" role="radiogroup" aria-label="Delivery speed">' +
+      '<p class="mq-speed-label">Delivery speed</p>' +
+      '<div class="mq-speed-grid">' +
+        '<button type="button" class="mq-speed-opt' + (S.speed === 'standard' ? ' active' : '') + '" role="radio" aria-checked="' + (S.speed === 'standard') + '" data-speed="standard">' +
+          '<span class="mq-speed-name">Standard</span>' +
+          '<span class="mq-speed-date" id="mq-speed-date-standard"></span>' +
+          '<span class="mq-speed-price">Included</span>' +
+        '</button>' +
+        '<button type="button" class="mq-speed-opt' + (S.speed === 'expedited' ? ' active' : '') + '" role="radio" aria-checked="' + (S.speed === 'expedited') + '" data-speed="expedited">' +
+          '<span class="mq-speed-name">Expedited <em>⚡</em></span>' +
+          '<span class="mq-speed-date" id="mq-speed-date-expedited"></span>' +
+          '<span class="mq-speed-price" id="mq-speed-price-expedited"></span>' +
+        '</button>' +
+      '</div>' +
+      '<p class="mq-speed-note" id="mq-speed-note"></p>' +
+    '</div>' +
+
+    /* ── Shipping / local delivery ── */
+    '<div class="mq-speed mq-ship" id="mq-ship" role="radiogroup" aria-label="How should we get your parts to you?">' +
+      '<p class="mq-speed-label">Get your parts</p>' +
+      '<div class="mq-speed-grid">' +
+        '<button type="button" class="mq-speed-opt' + (S.shipMethod === 'ship' ? ' active' : '') + '" role="radio" aria-checked="' + (S.shipMethod === 'ship') + '" data-ship="ship">' +
+          '<span class="mq-speed-name">Ship to me</span>' +
+          '<span class="mq-speed-date">USPS / UPS, tracked</span>' +
+          '<span class="mq-speed-price" id="mq-ship-price-ship"></span>' +
+        '</button>' +
+        '<button type="button" class="mq-speed-opt' + (S.shipMethod === 'local' ? ' active' : '') + '" role="radio" aria-checked="' + (S.shipMethod === 'local') + '" data-ship="local">' +
+          '<span class="mq-speed-name">Local delivery</span>' +
+          '<span class="mq-speed-date">Hand-delivered by our team</span>' +
+          '<span class="mq-speed-price">$' + LOCAL_FEE.toFixed(2) + ' · Orange County area</span>' +
+        '</button>' +
+      '</div>' +
+      '<div class="mq-zip-row" id="mq-zip-row" style="display:' + (S.shipMethod === 'local' ? 'flex' : 'none') + '">' +
+        '<label for="mq-zip">Delivery ZIP code</label>' +
+        '<input class="mq-inp mq-zip-inp" id="mq-zip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="e.g. 92821" value="' + esc(S.zip) + '">' +
+        '<span class="mq-zip-msg" id="mq-zip-msg" role="status"></span>' +
+      '</div>' +
+      '<p class="mq-speed-note" id="mq-ship-note"></p>' +
+      '<p class="mq-speed-note" id="mq-ship-nudge"></p>' +
+    '</div>' +
+
     '<div class="mq-grand-row mq-parts-subtotal-row"><span>Parts Subtotal</span><span id="mq-grand">$' + grandTotal().toFixed(2) + '</span></div>' +
-    '<div class="mq-shipping-row"><span>Shipping</span><span>$' + SHIPPING_BASE.toFixed(2) + '</span></div>' +
-    '<div class="mq-grand-row mq-order-total-row"><span>Order Total</span><span id="mq-order-total">$' + (grandTotal() + SHIPPING_BASE).toFixed(2) + '</span></div>' +
+    '<div class="mq-shipping-row" id="mq-adj-row" style="display:none"><span>Small-order adjustment <em class="mq-minfo" title="Orders under $' + MIN_ORDER + ' are billed at the $' + MIN_ORDER + ' order minimum.">(minimum $' + MIN_ORDER + ')</em></span><span id="mq-adj-fee"></span></div>' +
+    '<div class="mq-shipping-row" id="mq-ins-row" style="display:none"><span>Heat-set inserts <em class="mq-minfo" id="mq-ins-desc"></em></span><span id="mq-ins-fee"></span></div>' +
+    '<div class="mq-shipping-row mq-rush-row" id="mq-rush-row" style="display:none"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span id="mq-rush-fee"></span></div>' +
+    '<div class="mq-shipping-row"><span id="mq-ship-label">Shipping</span><span id="mq-ship-val"></span></div>' +
+    '<div class="mq-grand-row mq-order-total-row"><span id="mq-order-total-label">Order Total</span><span id="mq-order-total">$' + orderTotal().toFixed(2) + '</span></div>' +
 
     /* ── Form body — hidden as a unit on success ── */
     '<div id="mq-form-body">' +
@@ -931,8 +1363,21 @@ function renderQuote() {
       '<p>We\'ll review your files and follow up within one business day.</p>' +
     '</div>' +
     '<div id="mq-submit-err"></div>' +
-    '<p class="mq-trust-line">🔒 Your files are never shared · Prices confirmed within 1 business day</p>' +
-    '<button class="mq-cta" id="mq-req-btn">Request My Quote →</button>' +
+    '<button class="mq-cta" id="mq-req-btn" style="width:100%">' + SUBMIT_LABEL + '</button>' +
+    '<p class="mq-trust-line">🔒 Your files are never shared · Made in Orange County, no outsourcing</p>' +
+
+    /* ── Not ready? Email me this quote (email only, no files uploaded) ── */
+    '<div class="mq-save" id="mq-save">' +
+      '<button type="button" class="mq-save-toggle" id="mq-save-toggle" aria-expanded="false" aria-controls="mq-save-panel">Not ready? Email me this quote</button>' +
+      '<div class="mq-save-panel" id="mq-save-panel" style="display:none">' +
+        '<p class="mq-save-help">We\'ll email you this quote summary so you can come back to it. Your files stay on your device — nothing is uploaded until you submit for review.</p>' +
+        '<div class="mq-save-row">' +
+          '<input class="mq-inp" id="mq-save-email" type="email" placeholder="Email address" autocomplete="email" aria-label="Email address for your quote">' +
+          '<button type="button" class="mq-save-btn" id="mq-save-btn">Send</button>' +
+        '</div>' +
+        '<div class="mq-save-msg" id="mq-save-msg" role="status" aria-live="polite"></div>' +
+      '</div>' +
+    '</div>' +
     '<p class="mq-footnote">Prices based on current material rates · Estimates typically valid for 30 days</p>' +
     '<p class="mq-footnote">If you don\'t hear from us, please check your spam or junk folder.</p>';
 
@@ -951,12 +1396,92 @@ function renderQuote() {
     }
   });
 
+  // ── Heat-set inserts (per file, per part) + request-only options ─────────────
+  function updInsRow(idx) {
+    var it = items[idx], row = document.querySelector('#mq-inserts .mq-insrow[data-idx="' + idx + '"]');
+    if (!row) return;
+    var inp = row.querySelector('.mq-ins-inp'), sum = row.querySelector('.mq-ins-sum');
+    if (!inp || !sum) return;
+    inp.value = it.file.inserts || 0;
+    var n = (it.file.inserts || 0) * it.file.qty;
+    sum.textContent = n > 0 ? n + ' total · $' + (n * INSERT_FEE).toFixed(2) : '';
+  }
+  function setInserts(idx, val) {
+    val = Math.min(INSERT_MAX, Math.max(0, parseInt(val) || 0));
+    items[idx].file.inserts = val;
+    updInsRow(idx); refreshTotals();
+    mqTrack('inserts_changed', { mq_inserts_total: insTotal(), mq_insert_fee: insertFee(), mq_currency: 'USD' });
+  }
+  items.forEach(function(it, i) { updInsRow(i); });
+  var insBox = document.getElementById('mq-inserts');
+  if (insBox) {
+    insBox.addEventListener('click', function(e) {
+      var row = e.target.closest('.mq-insrow'); if (!row) return;
+      var idx = +row.dataset.idx, inp = row.querySelector('.mq-ins-inp');
+      if (e.target.classList.contains('mq-ins-dec')) setInserts(idx, +inp.value - 1);
+      if (e.target.classList.contains('mq-ins-inc')) setInserts(idx, +inp.value + 1);
+    });
+    insBox.addEventListener('change', function(e) {
+      if (e.target.classList.contains('mq-ins-inp')) { var row = e.target.closest('.mq-insrow'); if (row) setInserts(+row.dataset.idx, +e.target.value); }
+    });
+  }
+  document.getElementById('mq-reqopts').addEventListener('change', function(e) {
+    var id = e.target && e.target.getAttribute && e.target.getAttribute('data-req'); if (!id) return;
+    var i = S.requests.indexOf(id);
+    if (e.target.checked && i === -1) S.requests.push(id);
+    if (!e.target.checked && i !== -1) S.requests.splice(i, 1);
+    mqTrack('request_option', { mq_option: id, mq_on: e.target.checked, mq_requests: S.requests.slice().sort().join(',') });
+  });
+
+  // ── Shipping method + local ZIP ───────────────────────────────────────────────
+  function zipMsg() {
+    var m = document.getElementById('mq-zip-msg'); if (!m) return;
+    var z = S.zip;
+    m.className = 'mq-zip-msg';
+    if (S.shipMethod !== 'local' || z.length < 5) { m.textContent = ''; return; }
+    if (zipIsLocal(z)) { m.textContent = '✓ We deliver to ' + z; m.classList.add('ok'); }
+    else { m.textContent = 'Sorry, ' + z + ' is outside our local delivery area — shipping applies instead.'; m.classList.add('bad'); }
+  }
+  document.getElementById('mq-ship').addEventListener('click', function(e) {
+    var btn = e.target.closest('.mq-speed-opt');
+    if (!btn || btn.dataset.ship === S.shipMethod) return;
+    S.shipMethod = btn.dataset.ship;
+    document.querySelectorAll('#mq-ship .mq-speed-opt').forEach(function(b) {
+      var on = b === btn; b.classList.toggle('active', on); b.setAttribute('aria-checked', on);
+    });
+    document.getElementById('mq-zip-row').style.display = S.shipMethod === 'local' ? 'flex' : 'none';
+    if (S.shipMethod === 'local') document.getElementById('mq-zip').focus();
+    zipMsg(); refreshTotals();
+    var sh = ship();
+    mqTrack('ship_selected', { mq_ship_method: S.shipMethod, mq_ship_tier: sh.tier, mq_ship_free: sh.free, mq_ship_review: sh.review, mq_zip_ok: S.shipMethod === 'local' ? zipIsLocal(S.zip) : null });
+  });
+  document.getElementById('mq-zip').addEventListener('input', function(e) {
+    var z = e.target.value.replace(/\D/g, '').slice(0, 5);
+    e.target.value = z; S.zip = z;
+    zipMsg(); refreshTotals();
+    if (z.length === 5) mqTrack('zip_checked', { mq_zip_ok: zipIsLocal(z) });          // result only — never the ZIP itself
+  });
+
+  // ── Delivery speed picker ─────────────────────────────────────────────────────
+  document.getElementById('mq-speed').addEventListener('click', function(e) {
+    var btn = e.target.closest('.mq-speed-opt');
+    if (!btn || btn.dataset.speed === S.speed) return;
+    S.speed = btn.dataset.speed;
+    document.querySelectorAll('#mq-speed .mq-speed-opt').forEach(function(b) {   // scoped: must not touch the shipping cards
+      var on = b === btn; b.classList.toggle('active', on); b.setAttribute('aria-checked', on);
+    });
+    refreshTotals();
+    mqTrack('speed_selected', { mq_speed: S.speed, mq_rush_fee: rushFee(), mq_needs_review: est().expedited.review, mq_value: grandTotal(), mq_currency: 'USD' });
+  });
+  zipMsg(); refreshTotals();
+
   // ── Infill density selector ───────────────────────────────────────────────────
   if (S.process === 'FDM') {
     document.querySelector('.mq-infill-bar').addEventListener('click', function(e) {
       var btn = e.target.closest('.mq-infill-opt');
       if (!btn) return;
       S.infill = +btn.dataset.pct;
+      mqTrack('infill_changed', { mq_infill: S.infill });
       document.querySelectorAll('.mq-infill-opt').forEach(function(b) { b.classList.toggle('active', b === btn); });
       items.forEach(function(it, i) {
         var fresh = calcLine(it.file);
@@ -972,14 +1497,82 @@ function renderQuote() {
           badge.textContent = '−' + it.pct + '%';
         } else if (badge) { badge.remove(); }
       });
-      document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
-      var otEl2 = document.getElementById('mq-order-total');
-      if (otEl2) otEl2.textContent = '$' + (grandTotal() + SHIPPING_BASE).toFixed(2);
+      refreshTotals();
       var metaTxt = document.getElementById('mq-meta-txt');
       if (metaTxt) metaTxt.textContent = S.process + ' · ' + S.materialLabel + ' · ' + S.infill + '% infill';
       renderDiscountBar(items);
     });
   }
+
+  // ── Email me this quote ───────────────────────────────────────────────────────
+  (function() {
+    var toggle = document.getElementById('mq-save-toggle'), panel = document.getElementById('mq-save-panel');
+    var emailEl = document.getElementById('mq-save-email'), btn = document.getElementById('mq-save-btn'), msg = document.getElementById('mq-save-msg');
+    function say(text, cls) { msg.textContent = text; msg.className = 'mq-save-msg' + (cls ? ' ' + cls : ''); }
+
+    toggle.addEventListener('click', function() {
+      var open = panel.style.display === 'none';
+      panel.style.display = open ? '' : 'none';
+      toggle.setAttribute('aria-expanded', open);
+      if (open) {
+        var main = document.getElementById('mq-c-email');                  // reuse what they already typed
+        if (main && main.value.trim() && !emailEl.value) emailEl.value = main.value.trim();
+        emailEl.focus();
+        mqTrack('save_open');
+      }
+    });
+
+    btn.addEventListener('click', function() {
+      var email = emailEl.value.trim();
+      emailEl.classList.remove('error'); say('');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        emailEl.classList.add('error'); say('Please enter a valid email address.', 'bad');
+        mqTrack('save_invalid'); return;
+      }
+      btn.disabled = true; btn.textContent = 'Sending…';
+      mqTrack('save_attempt', { mq_value: grandTotal(), mq_currency: 'USD' });
+
+      var sh = ship(), fd = new FormData();
+      fd.append('_subject', 'Saved quote (email only, NOT submitted) — $' + orderTotal().toFixed(2));
+      fd.append('type',     'SAVED QUOTE — customer asked for a copy; files NOT uploaded; no review requested');
+      fd.append('email',    email);
+      fd.append('process',  S.process);
+      fd.append('material', S.materialLabel);
+      if (S.process === 'FDM') fd.append('infill', S.infill + '%');
+      fd.append('quote',    filesSummary());
+      fd.append('parts_subtotal', '$' + grandTotal().toFixed(2));
+      if (minAdj() > 0)  fd.append('small_order_adjustment', '$' + minAdj().toFixed(2));
+      if (insertFee() > 0) fd.append('heat_set_inserts', '$' + insertFee().toFixed(2) + ' (' + insTotal() + (insTotal() === 1 ? ' insert' : ' inserts') + ' + $' + INSERT_SETUP.toFixed(2) + ' setup)');
+      if (rushFee() > 0) fd.append('expedited_fee', '$' + rushFee().toFixed(2));
+      if (S.requests.length) fd.append('special_requests', reqLabels().join('; ') + ' (priced at review — not in total)');
+      fd.append('delivery_speed',  S.speed === 'expedited' ? 'EXPEDITED (+' + Math.round(RUSH_PCT * 100) + '%)' : 'Standard');
+      fd.append('ship_by',         shipByText());
+      fd.append('delivery_method', sh.method === 'local' ? 'Local delivery requested' : 'Ship — ' + sh.tier + ' package');
+      fd.append('shipping',        sh.review ? 'QUOTE AT REVIEW (oversize)' : (sh.free ? '$0.00 (free over $' + FREE_SHIP_OVER + ')' : '$' + shipAmt().toFixed(2)));
+      fd.append('order_total',     '$' + orderTotal().toFixed(2) + (sh.review ? ' (BEFORE shipping)' : ''));
+      mqAttribution(fd);
+
+      fetch(FORMSPREE_SAVE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
+        .then(function(res) { return res.json().catch(function() { return {}; }).then(function(d) { return { ok: res.ok, data: d }; }); })
+        .then(function(r) {
+          if (r.ok) {
+            say('✓ Sent — check your inbox (and spam folder).', 'ok');
+            btn.textContent = 'Sent';                                    // stays disabled: one send per click-through
+            emailEl.disabled = true;
+            mqTrack('save_success', { mq_value: grandTotal(), mq_order_total: orderTotal(), mq_speed: S.speed, mq_currency: 'USD' });
+          } else {
+            btn.disabled = false; btn.textContent = 'Send';
+            say('Something went wrong. Please try again, or use “Submit for Review”.', 'bad');
+            mqTrack('save_error', { mq_reason: 'server' });
+          }
+        })
+        .catch(function() {
+          btn.disabled = false; btn.textContent = 'Send';
+          say('Network error. Please try again.', 'bad');
+          mqTrack('save_error', { mq_reason: 'network' });
+        });
+    });
+  })();
 
   // ── Quote form submission ─────────────────────────────────────────────────────
   document.getElementById('mq-req-btn').addEventListener('click', function() {
@@ -998,10 +1591,17 @@ function renderQuote() {
     var valid = true;
     if (!name)  { nameEl.classList.add('error');  valid = false; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { emailEl.classList.add('error'); valid = false; }
-    if (!valid) { errEl.innerHTML = '<p class="mq-submit-err">Please fill in the required fields.</p>'; return; }
+    if (S.shipMethod === 'local' && !zipIsLocal(S.zip)) {
+      mqTrack('submit_invalid', { mq_path: 'priced', mq_reason: 'zip' });
+      errEl.innerHTML = '<p class="mq-submit-err">Enter a ZIP code inside our local delivery area, or choose “Ship to me”.</p>';
+      var zEl = document.getElementById('mq-zip'); if (zEl) zEl.focus();
+      return;
+    }
+    if (!valid) { mqTrack('submit_invalid', { mq_path: 'priced' }); errEl.innerHTML = '<p class="mq-submit-err">Please fill in the required fields.</p>'; return; }
 
     var btn = document.getElementById('mq-req-btn');
     btn.disabled = true; btn.textContent = 'Submitting…';
+    mqTrack('submit_attempt', { mq_path: 'priced', mq_speed: S.speed, mq_value: grandTotal(), mq_currency: 'USD' });
 
     var fd = new FormData();
     fd.append('name',        name);
@@ -1013,9 +1613,23 @@ function renderQuote() {
     if (S.process === 'FDM') fd.append('infill', S.infill + '%');
     fd.append('quote',       filesSummary());
     fd.append('parts_subtotal', '$' + grandTotal().toFixed(2));
-    fd.append('shipping',       '$' + SHIPPING_BASE.toFixed(2));
-    fd.append('order_total',    '$' + (grandTotal() + SHIPPING_BASE).toFixed(2));
+    if (insertFee() > 0) fd.append('heat_set_inserts', '$' + insertFee().toFixed(2) + ' — ' + insTotal() + (insTotal() === 1 ? ' insert × $' : ' inserts × $') + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup (' + insDetail() + ')');
+    if (rushFee() > 0) fd.append('expedited_fee', '$' + rushFee().toFixed(2));
+    if (minAdj() > 0) fd.append('small_order_adjustment', '$' + minAdj().toFixed(2) + ' (raised to $' + MIN_ORDER + ' minimum)');
+    if (S.requests.length) {
+      fd.append('special_requests', reqLabels().join('; '));
+      fd.append('needs_manual_review_options', 'YES — customer asked for options not priced online; quote them and send an updated total');
+    }
+    fd.append('delivery_method', ship().method === 'local' ? 'LOCAL DELIVERY — ZIP ' + S.zip : 'Ship — ' + ship().tier + ' package (est. ' + Math.round(ship().grams / 453.6 * 10) / 10 + ' lb, longest side ' + ship().inches + ' in)');
+    fd.append('shipping',       ship().review ? 'QUOTE AT REVIEW (oversize)' : (ship().free ? '$0.00 (free over $' + FREE_SHIP_OVER + ')' : '$' + shipAmt().toFixed(2)));
+    if (ship().review) fd.append('needs_manual_review_shipping', 'YES — oversize/heavy; quote shipping and send updated total');
+    fd.append('order_total',    '$' + orderTotal().toFixed(2) + (ship().review ? ' (BEFORE shipping — oversize, quote separately)' : ''));
+    fd.append('delivery_speed', S.speed === 'expedited' ? 'EXPEDITED (+' + Math.round(RUSH_PCT * 100) + '%)' : 'Standard');
+    fd.append('ship_by',        shipByText());
+    fd.append('lead_time',      (S.speed === 'expedited' ? 'Expedited' : 'Standard') + ' — est. ship by ' + shipByText() + (est().startsToday ? ' (if confirmed today before noon PT)' : ''));
+    if (S.speed === 'expedited' && est().expedited.review) fd.append('needs_manual_review', 'YES — expedited on a large order; confirm date with customer');
     if (note) fd.append('note', note);
+    mqAttribution(fd);
     eligible.forEach(function(f) { if (f.originalFile) fd.append('attachment', f.originalFile, f.fileName); });
 
     fetch(FORMSPREE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
@@ -1026,6 +1640,15 @@ function renderQuote() {
       })
       .then(function(r) {
         if (r.ok) {
+          mqTrack('submit_success', {
+            mq_path: 'priced', mq_process: S.process, mq_material: S.material,
+            mq_files: items.length,
+            mq_qty_total: items.reduce(function(s, it) { return s + it.file.qty; }, 0),
+            mq_value: grandTotal(), mq_order_total: orderTotal(), mq_speed: S.speed, mq_rush_fee: rushFee(), mq_min_adj: minAdj(),
+            mq_ship_method: ship().method, mq_ship_tier: ship().tier, mq_ship_free: ship().free, mq_currency: 'USD',
+            mq_inserts_total: insTotal(), mq_insert_fee: insertFee(), mq_requests: S.requests.slice().sort().join(','),
+            mq_has_phone: !!phone, mq_has_company: !!company, mq_has_note: !!note,   // booleans only, never the values
+          });
           clearSession();
           var succEl = document.getElementById('mq-success');
           document.getElementById('mq-form-body').style.display = 'none';
@@ -1044,8 +1667,19 @@ function renderQuote() {
             material: S.materialLabel,
             infill:    S.process === 'FDM' ? S.infill : null,
             subtotal:  grandTotal().toFixed(2),
-            shipping:  SHIPPING_BASE.toFixed(2),
-            total:     (grandTotal() + SHIPPING_BASE).toFixed(2),
+            rush:      rushFee() > 0 ? rushFee().toFixed(2) : null,
+            rushPct:   Math.round(RUSH_PCT * 100),
+            speed:     S.speed,
+            shipBy:    shipByText(),
+            adj:       minAdj() > 0 ? minAdj().toFixed(2) : null,
+            ins:       insertFee() > 0 ? insertFee().toFixed(2) : null,
+            insDesc:   insertFee() > 0 ? insTotal() + ' × $' + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup' : '',
+            requests:  reqLabels(),
+            transit:   (ship().method === 'ship' && !ship().review) ? TRANSIT_TEXT : '',
+            minOrder:  MIN_ORDER,
+            shipLabel: ship().label,
+            shipping:  ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2)),
+            total:     orderTotal().toFixed(2),
             note:     note,
             items:    items.map(function(it) {
               return { fileName: it.file.fileName, volume: it.file.volume,
@@ -1081,8 +1715,13 @@ function renderQuote() {
                 '</div>';
               }).join('') +
               '<div class="mq-success-subtotal-row"><span>Parts Subtotal</span><span>$' + grandTotal().toFixed(2) + '</span></div>' +
-              '<div class="mq-success-shipping-row"><span>Shipping</span><span>$' + SHIPPING_BASE.toFixed(2) + '</span></div>' +
-              '<div class="mq-success-total-row"><span>Order Total</span><span>$' + (grandTotal() + SHIPPING_BASE).toFixed(2) + '</span></div>' +
+              (minAdj() > 0 ? '<div class="mq-success-shipping-row"><span>Small-order adjustment (min. $' + MIN_ORDER + ')</span><span>$' + minAdj().toFixed(2) + '</span></div>' : '') +
+              (insertFee() > 0 ? '<div class="mq-success-shipping-row"><span>Heat-set inserts (' + insTotal() + ' × $' + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup)</span><span>$' + insertFee().toFixed(2) + '</span></div>' : '') +
+              (rushFee() > 0 ? '<div class="mq-success-shipping-row"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span>$' + rushFee().toFixed(2) + '</span></div>' : '') +
+              '<div class="mq-success-shipping-row"><span>' + ship().label + '</span><span>' + (ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2))) + '</span></div>' +
+              '<div class="mq-success-total-row"><span>Order Total' + (ship().review ? ' (before shipping)' : '') + '</span><span>$' + orderTotal().toFixed(2) + '</span></div>' +
+              '<div class="mq-success-note"><strong>' + (S.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery:</strong> est. ship by ' + esc(shipByText()) + (ship().method === 'ship' && !ship().review ? '. ' + TRANSIT_TEXT : '') + '</div>' +
+              (S.requests.length ? '<div class="mq-success-note"><strong>Priced at review:</strong> ' + esc(reqLabels().join('; ')) + '</div>' : '') +
               (note ? '<div class="mq-success-note"><strong>Notes:</strong> ' + note + '</div>' : '') +
             '</div>' +
 
@@ -1092,6 +1731,7 @@ function renderQuote() {
               '<button class="mq-ship-trigger" id="mq-ship-trigger">📦 I\'m ready to place my order</button>' +
               '<div class="mq-ship-form" id="mq-ship-form" style="display:none">' +
                 '<p class="mq-ship-heading">Where are we shipping to?</p>' +
+                '<p class="mq-footnote mq-ship-flatnote">' + (S.shipMethod === 'local' ? 'Local delivery to the ZIP you entered earlier.' : 'Your quoted shipping is flat-rate within the continental U.S.') + '</p>' +
                 '<input class="mq-inp" id="mq-s-name"    type="text" placeholder="Full name *" value="' + esc(name) + '">' +
                 '<input class="mq-inp" id="mq-s-company" type="text" placeholder="Company" value="' + esc(company) + '">' +
                 '<input class="mq-inp" id="mq-s-addr1"   type="text" placeholder="Address line 1 *" autocomplete="address-line1">' +
@@ -1101,6 +1741,7 @@ function renderQuote() {
                   '<input class="mq-inp" id="mq-s-state" type="text" placeholder="State *" maxlength="2" autocomplete="address-level1">' +
                   '<input class="mq-inp" id="mq-s-zip"   type="text" placeholder="ZIP *" maxlength="10" autocomplete="postal-code">' +
                 '</div>' +
+                '<p class="mq-ship-region" id="mq-ship-region" role="status" style="display:none">Heads-up: this address is outside the continental U.S., so we\'ll confirm the shipping cost with you before invoicing. Your total may change.</p>' +
                 '<div id="mq-ship-err"></div>' +
                 '<button class="mq-cta" id="mq-ship-btn">Confirm Order →</button>' +
                 '<p class="mq-footnote">We\'ll review your order and send an invoice to <strong>' + esc(email) + '</strong> before any charges are made.</p>' +
@@ -1119,6 +1760,9 @@ function renderQuote() {
             document.getElementById('mq-s-addr1').focus();
           });
 
+          document.getElementById('mq-s-state').addEventListener('input', function() {
+            document.getElementById('mq-ship-region').style.display = (S.shipMethod === 'ship' && NON_LOWER48.indexOf(this.value.trim().toUpperCase()) !== -1) ? 'block' : 'none';
+          });
           document.getElementById('mq-ship-btn').addEventListener('click', function() {
             var addr1El   = document.getElementById('mq-s-addr1');
             var cityEl    = document.getElementById('mq-s-city');
@@ -1146,12 +1790,16 @@ function renderQuote() {
               document.getElementById('mq-s-addr2').value.trim(),
               cityEl.value.trim() + ', ' + stateEl.value.trim().toUpperCase() + ' ' + zipEl.value.trim()
             ].filter(Boolean).join(', '));
+            var offRegion = S.shipMethod === 'ship' && NON_LOWER48.indexOf(stateEl.value.trim().toUpperCase()) !== -1;
+            sfd.append('shipping_quoted', ship().review ? 'QUOTE AT REVIEW (oversize)' : (ship().method === 'local' ? 'Local delivery $' + shipAmt().toFixed(2) : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2)) + ' flat (' + ship().tier + ')'));
+            if (offRegion) sfd.append('needs_manual_review_shipping', 'YES — destination outside the continental U.S. (' + stateEl.value.trim().toUpperCase() + '); confirm shipping cost and send updated total before invoicing');
             fetch(FORMSPREE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: sfd })
               .then(function(res) { return res.json().catch(function() { return {}; }).then(function(d) { return { ok: res.ok, data: d }; }); })
               .then(function(r) {
                 if (r.ok) {
                   document.getElementById('mq-ship-form').style.display    = 'none';
                   document.getElementById('mq-ship-success').style.display = 'block';
+                  mqTrack('order_confirmed', { mq_value: grandTotal(), mq_currency: 'USD', mq_offregion: offRegion });
                 } else {
                   shipBtn.disabled = false; shipBtn.textContent = 'Confirm Order →';
                   shipErrEl.innerHTML = '<p class="mq-submit-err">' + esc(r.data.error || 'Submission failed — please try again.') + '</p>';
@@ -1165,12 +1813,14 @@ function renderQuote() {
 
           // Formspree auto-reply handles the customer confirmation email.
         } else {
-          btn.disabled = false; btn.textContent = 'Request My Quote →';
+          btn.disabled = false; btn.textContent = SUBMIT_LABEL;
+          mqTrack('submit_error', { mq_path: 'priced', mq_reason: 'server' });
           errEl.innerHTML = '<p class="mq-submit-err">' + esc(r.data.error || 'Submission failed — please try again.') + '</p>';
         }
       })
       .catch(function() {
-        btn.disabled = false; btn.textContent = 'Request My Quote →';
+        btn.disabled = false; btn.textContent = SUBMIT_LABEL;
+        mqTrack('submit_error', { mq_path: 'priced', mq_reason: 'network' });
         errEl.innerHTML = '<p class="mq-submit-err">Something went wrong — please try again or email us directly.</p>';
       });
   });
@@ -1200,9 +1850,8 @@ function renderQuote() {
         saveEl.textContent = '';
       }
     }
-    document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
-    var otEl = document.getElementById('mq-order-total');
-    if (otEl) otEl.textContent = '$' + (grandTotal() + SHIPPING_BASE).toFixed(2);
+    updInsRow(idx);
+    refreshTotals();
     renderDiscountBar(items);
   }
 }
@@ -1360,16 +2009,37 @@ window.mqDownloadPDF = function() {
       y += rh;
     });
 
-    // Total row
+    // Totals — parts, optional Expedited fee, shipping, order total.
+    // (Previously this row was labelled "Parts Total" but showed the figure INCLUDING shipping.)
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, y, pageW - margin, y);
-    y += 7;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(30, 30, 30);
-    doc.text('Parts Total', margin, y);
-    doc.text('$' + d.total, pageW - margin, y, { align: 'right' });
-    y += 10;
+    y += 6;
+    function totRow(label, value, strong) {
+      doc.setFont('helvetica', strong ? 'bold' : 'normal');
+      doc.setFontSize(strong ? 12 : 9.5);
+      doc.setTextColor(30, 30, 30);
+      doc.text(label, margin, y);
+      doc.text(/^[\d.,]+$/.test(value) ? '$' + value : value, pageW - margin, y, { align: 'right' });   // 'FREE' / 'Quoted at review' print as-is
+      y += strong ? 8 : 5.5;
+    }
+    totRow('Parts Subtotal', d.subtotal, false);
+    if (d.adj)  totRow('Small-order adjustment (minimum $' + d.minOrder + ')', d.adj, false);
+    if (d.ins)  totRow('Heat-set inserts (' + d.insDesc + ')', d.ins, false);
+    if (d.rush) totRow('Expedited (+' + d.rushPct + '%)', d.rush, false);
+    totRow(d.shipLabel, d.shipping.replace(/^\$/, ''), false);
+    y += 1;
+    totRow(d.shipping === 'Quoted at review' ? 'Order Total (before shipping)' : 'Order Total', d.total, true);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(90, 90, 90);
+    doc.text((d.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery — est. ship by ' + d.shipBy + (d.transit ? '. ' + d.transit : ''), margin, y);
+    y += 9;
+    if (d.requests && d.requests.length) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(30, 30, 30);
+      doc.text('Requested — priced at review (not in total):', margin, y);
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(90, 90, 90);
+      var rl = doc.splitTextToSize(d.requests.join('; '), cW); y += 4.5; doc.text(rl, margin, y); y += rl.length * 4 + 5;
+    }
 
     // ── Notes ──────────────────────────────────────────────────────────────
     if (d.note) {
@@ -1399,6 +2069,7 @@ window.mqDownloadPDF = function() {
     doc.text('mithrilplastics.com', pageW - margin, 281, { align: 'right' });
 
     doc.save('Mithril-Quote-' + d.ref + '.pdf');
+    mqTrack('pdf_downloaded');
     if (btn) { btn.textContent = '⬇ Download PDF Summary'; btn.disabled = false; }
   }
 

@@ -118,8 +118,8 @@
 .mq-stepper input::-webkit-inner-spin-button,.mq-stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 
 /* ─── File cards ──────────────────────────────────────────────────────────── */
-.mq-cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:32px}
-.mq-card{background:rgba(86,5,145,.05);border:1px solid rgba(86,5,145,.35);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:0;transition:border-color .15s,background .15s}
+.mq-cards-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-bottom:32px}
+.mq-card{min-width:0;background:rgba(86,5,145,.05);border:1px solid rgba(86,5,145,.35);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:0;transition:border-color .15s,background .15s}
 .mq-card.selected{border-color:var(--mq-teal-brd);background:var(--mq-teal-bg)}
 .mq-card-header{display:flex;align-items:center;gap:14px;margin-bottom:18px}
 .mq-card-name{flex:1;font-size:14px;font-weight:700;color:var(--mq-tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -129,9 +129,16 @@
 .mq-card-thumb{width:88px;height:88px;flex-shrink:0;background:var(--mq-bg-thumb);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid rgba(86,5,145,.25)}
 .mq-card-thumb img{width:100%;height:100%;object-fit:contain}
 .mq-card-thumb-placeholder{font-size:28px}
-.mq-card-info{flex:1;display:flex;flex-direction:column;gap:7px;padding-top:4px}
+.mq-card-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;padding-top:4px}
 .mq-card-dims{font-size:13px;color:var(--mq-teal);letter-spacing:.01em}
 .mq-card-vol{font-size:13px;color:#888}
+.mq-card-dims-in{font-size:12px;color:var(--mq-tx-3);margin-top:-3px}
+.mq-unit-pick{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mq-tx-2);margin-top:2px}
+.mq-unit-sel{flex:1;min-width:0;background:var(--mq-stp-inp);color:var(--mq-tx);border:1px solid rgba(86,5,145,.4);border-radius:6px;font-size:12px;padding:4px 6px;font-family:inherit;cursor:pointer}
+.mq-unit-sel:focus{outline:2px solid var(--mq-teal);outline-offset:1px}
+.mq-unit-hint{background:rgba(255,180,50,.1);border:1px solid rgba(255,180,50,.45);color:var(--mq-tx);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.5;margin-bottom:18px}
+.mq-unit-hint-btn{display:inline-block;margin-top:6px;background:var(--mq-teal);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.mq-unit-hint-btn:hover{filter:brightness(1.1)}
 .mq-card-footer{display:flex;align-items:center;border-top:1px solid rgba(86,5,145,.2);padding-top:16px}
 .mq-card-footer .mq-stepper button{width:32px;height:32px;font-size:16px}
 .mq-card-footer .mq-stepper input{width:38px;height:32px;font-size:14px}
@@ -230,6 +237,31 @@
 .mq-grand-row span:last-child{color:var(--mq-teal)}
 .mq-parts-subtotal-row{font-size:15px;font-weight:600;border-top:1px solid rgba(86,5,145,.25);padding-top:14px;margin-top:8px;margin-bottom:0}
 .mq-parts-subtotal-row span:last-child{color:var(--mq-tx-2)}
+/* ─── Delivery speed picker ───────────────────────────────────────────────── */
+.mq-speed{margin:22px 0 14px}
+.mq-speed-label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mq-tx-2);margin:0 0 10px}
+.mq-speed-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.mq-speed-opt{display:flex;flex-direction:column;gap:3px;text-align:left;background:var(--mq-nxt-bg);border:1.5px solid var(--mq-nxt-brd);border-radius:12px;padding:14px 16px;cursor:pointer;color:var(--mq-tx);font-family:inherit;transition:border-color .15s,background .15s,box-shadow .15s}
+.mq-speed-opt:hover{border-color:var(--mq-teal-brd)}
+.mq-speed-opt:focus-visible{outline:2px solid var(--mq-teal);outline-offset:2px}
+.mq-speed-opt{position:relative}
+.mq-speed-opt:not(.active){opacity:.82}
+.mq-speed-opt.active{border-color:var(--mq-teal);background:var(--mq-teal-bg);box-shadow:0 0 0 1px var(--mq-teal);opacity:1}
+.mq-speed-opt.active::after{content:'✓';position:absolute;top:12px;right:12px;width:20px;height:20px;border-radius:50%;background:var(--mq-teal);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.mq-speed-name{font-size:15px;font-weight:700}
+.mq-speed-name em{font-style:normal}
+.mq-speed-date{font-size:13px;color:var(--mq-teal);font-weight:600}
+.mq-speed-price{font-size:12.5px;color:var(--mq-tx-2)}
+.mq-speed-note{font-size:12px;line-height:1.5;color:var(--mq-tx-3);margin:10px 0 0}
+.mq-zip-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:12px}
+.mq-zip-row label{font-size:13px;font-weight:600;color:var(--mq-tx-2)}
+.mq-zip-inp{width:120px!important;flex:0 0 auto;margin:0!important;text-align:center;letter-spacing:.12em;font-weight:700}
+.mq-zip-msg{font-size:12.5px;line-height:1.4}
+.mq-zip-msg.ok{color:var(--mq-teal);font-weight:600}
+.mq-zip-msg.bad{color:#ea384c}
+.mq-minfo{font-style:normal;color:var(--mq-tx-3);font-size:12px;cursor:help}
+@media (max-width:480px){.mq-speed-grid{grid-template-columns:minmax(0,1fr)}}
+
 .mq-shipping-row{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;font-weight:600;color:var(--mq-tx-2);padding:6px 0;border-bottom:1px solid rgba(86,5,145,.2)}
 .mq-order-total-row{border-top:2px solid var(--mq-teal-brd);margin-top:0}
 .mq-success-subtotal-row{display:flex;justify-content:space-between;padding:8px 14px;font-size:13px;color:var(--mq-tx-2);border-top:1px solid rgba(86,5,145,.3)}
@@ -251,6 +283,20 @@
 .mq-cta{display:inline-block;padding:20px 56px;background:#560591;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:800;letter-spacing:.04em;cursor:pointer;transition:background .15s,box-shadow .15s;font-family:'Khula',sans-serif}
 .mq-cta:hover{background:#6b0ab5;box-shadow:0 0 28px rgba(86,5,145,.55)}
 .mq-cta:disabled{opacity:.45;cursor:not-allowed}
+/* ─── "Email me this quote" ───────────────────────────────────────────────── */
+.mq-save{text-align:center;margin:10px 0 2px}
+.mq-save-toggle{background:none;border:none;color:var(--mq-teal);font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:8px 10px}
+.mq-save-toggle:hover{filter:brightness(1.15)}
+.mq-save-toggle:focus-visible,.mq-save-btn:focus-visible{outline:2px solid var(--mq-teal);outline-offset:2px;border-radius:6px}
+.mq-save-panel{max-width:460px;margin:8px auto 0;text-align:left;background:var(--mq-nxt-bg);border:1px solid var(--mq-nxt-brd);border-radius:12px;padding:14px 16px}
+.mq-save-help{font-size:12.5px;line-height:1.5;color:var(--mq-tx-2);margin:0 0 10px}
+.mq-save-row{display:flex;gap:8px;align-items:stretch}
+.mq-save-row .mq-inp{flex:1;min-width:0;margin:0}
+.mq-save-btn{flex:0 0 auto;background:var(--mq-tog-odot,#560591);color:#fff;border:none;border-radius:8px;padding:0 20px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
+.mq-save-btn:disabled{opacity:.6;cursor:default}
+.mq-save-msg{font-size:12.5px;line-height:1.4;margin-top:8px;min-height:1px}
+.mq-save-msg.ok{color:var(--mq-teal);font-weight:600}
+.mq-save-msg.bad{color:#ea384c}
 .mq-footnote{text-align:center;font-size:13px;color:#888;margin-top:16px}
 
 /* ─── Contact / form ──────────────────────────────────────────────────────── */
@@ -315,7 +361,7 @@
   .mq-brand-header{padding:26px 24px}
   .mq-step{font-size:11px;padding:14px 4px;letter-spacing:.02em}
   .mq-card{padding:16px}
-  .mq-cards-grid{grid-template-columns:1fr}
+  .mq-cards-grid{grid-template-columns:minmax(0,1fr)}
   .mq-controls-bar{flex-direction:column;align-items:flex-start}
   .mq-controls-right{width:100%;justify-content:flex-end}
   .mq-cta{padding:18px 36px}
@@ -326,3 +372,28 @@
   .mq-addr-row{grid-template-columns:1fr}
   .mq-ship-opts{grid-template-columns:1fr}
 }
+
+/* ── Heat-set inserts + request-only options ── */
+.mq-ins{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:-4px;padding:8px 10px;border-radius:8px;background:rgba(86,5,145,.08)}
+.mq-ins-label{font-size:13px;font-weight:600;color:var(--mq-tx-2)}
+.mq-ins-label em{font-style:normal;font-weight:400;color:#a8a8a8;margin-left:4px}
+.mq-ins-stepper button{width:30px;height:30px;font-size:16px}
+.mq-ins-stepper input{width:40px;height:30px;font-size:14px}
+.mq-ins-sum{font-size:12.5px;color:var(--mq-teal);font-weight:600;margin-left:auto}
+.mq-reqopts{margin:14px 0 4px;border:1px solid rgba(86,5,145,.3);border-radius:10px;padding:10px 12px;background:rgba(86,5,145,.05)}
+.mq-reqopts summary{cursor:pointer;font-size:13.5px;font-weight:600;color:var(--mq-tx-2);list-style-position:inside}
+.mq-reqopts summary em{font-style:normal;font-weight:400;color:var(--mq-teal);margin-left:4px}
+.mq-reqopts-help{font-size:12.5px;color:#a8a8a8;margin:8px 0 6px}
+.mq-reqopt{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;color:var(--mq-tx);cursor:pointer}
+.mq-reqopt input{width:18px;height:18px;accent-color:#560591;flex:none}
+
+/* ── Dedicated heat-set inserts section ── */
+.mq-inserts{margin:16px 0 6px}
+.mq-inserts .mq-speed-label em{font-style:normal;font-weight:400;text-transform:none;letter-spacing:0;color:#a8a8a8;margin-left:6px}
+.mq-inserts-help{font-size:13px;color:#a8a8a8;margin:2px 0 10px}
+.mq-insrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border:1px solid rgba(86,5,145,.3);border-radius:10px;background:rgba(86,5,145,.05);margin-bottom:8px}
+.mq-insrow-name{flex:1 1 160px;min-width:0;font-size:14px;font-weight:700;color:var(--mq-tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mq-insrow-lab{font-size:12.5px;color:var(--mq-tx-2)}
+
+.mq-ship-region{margin:8px 0 4px;padding:9px 12px;border-radius:8px;border:1px solid rgba(214,158,46,.55);background:rgba(214,158,46,.12);font-size:13px;color:var(--mq-tx)}
+.mq-ship-flatnote{margin:0 0 8px;text-align:left}

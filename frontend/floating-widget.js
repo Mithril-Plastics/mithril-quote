@@ -139,7 +139,7 @@
     +         '<div class="mq-sel-row"><span class="mq-selected-count" id="mq-sel-count">0 models selected</span></div>'
     +         '<div class="mq-controls-bar">'
     +           '<div class="mq-controls-left">'
-    +             '<span class="mq-unit-label">File unit: <strong>Millimeters (mm)</strong></span>'
+    +             '<span class="mq-unit-label">File units: <strong>set per model below</strong> — check each card</span>'
     +             '<div class="mq-global-qty">'
     +               '<span class="mq-global-qty-label">Quantity:</span>'
     +               '<div class="mq-stepper">'
@@ -259,13 +259,26 @@
 
   // ── Open / close functions (modal mode only) ────────────────────────────────
   if (!mqInDom) {
+    // Analytics: push to GTM's dataLayer. Counts/choices only — no personal data.
+    function mqPush(name, extra) {
+      try {
+        var e = { event: 'mq_' + name, mq_source: 'modal', mq_page: location.pathname };
+        for (var k in (extra || {})) e[k] = extra[k];
+        (window.dataLayer = window.dataLayer || []).push(e);
+      } catch (err) {}
+    }
     window.mqOpenModal = function () {
       document.getElementById('mq-modal-overlay').classList.add('mq-open');
       document.body.style.overflow = 'hidden';
+      mqPush('modal_open');
     };
     window.mqCloseModal = function () {
-      document.getElementById('mq-modal-overlay').classList.remove('mq-open');
+      var ov = document.getElementById('mq-modal-overlay');
+      var wasOpen = ov.classList.contains('mq-open');   // Escape fires this even when closed
+      ov.classList.remove('mq-open');
       document.body.style.overflow = '';
+      // mq_last_step = how far they got before closing (set by widget.js)
+      if (wasOpen) mqPush('modal_close', { mq_last_step: window.MQ_LAST || 'upload' });
     };
     window.mqOverlayClick = function (e) {
       if (e.target === document.getElementById('mq-modal-overlay')) mqCloseModal();
