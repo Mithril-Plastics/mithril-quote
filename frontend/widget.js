@@ -912,7 +912,7 @@ var REQUEST_OPTS    = [          // not priced online — customer ticks them, w
 ];
 var TRANSIT_TEXT    = 'Arrives about 2–5 business days after it ships.';   // shown for shipped orders; edit to match your carrier
 var NON_LOWER48     = ['AK','HI','PR','GU','VI','AS','MP','AA','AE','AP'];     // flat-rate shipping covers the lower 48; these get confirmed at review
-var MIN_ORDER       = 35;        // parts subtotal is raised to this if lower ("small-order adjustment")
+var MIN_ORDER       = 10;        // parts subtotal is raised to this if lower ("small-order adjustment")
 var FREE_SHIP_OVER  = 150;       // Small/Medium shipping is free when parts subtotal reaches this
 var LOCAL_FEE       = 10;        // flat fee, hand delivery within the ZIP list below
 var PACK_G          = 100;       // packaging weight added to every shipment (grams)
