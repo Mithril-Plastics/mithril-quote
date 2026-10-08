@@ -870,7 +870,7 @@ function discountPct(qty) {
   return t ? t.pct : 0;
 }
 
-var MIN_PART_PRICE = 5.00;  // minimum base price per part
+var MIN_PART_PRICE = 10.00; // minimum base price per part; small parts simply price at this, with no separate line item
 
 function calcLine(file) {
   var cfg        = MOCK_RATES[S.process];
@@ -912,7 +912,7 @@ var REQUEST_OPTS    = [          // not priced online — customer ticks them, w
 ];
 var TRANSIT_TEXT    = 'Arrives about 2–5 business days after it ships.';   // shown for shipped orders; edit to match your carrier
 var NON_LOWER48     = ['AK','HI','PR','GU','VI','AS','MP','AA','AE','AP'];     // flat-rate shipping covers the lower 48; these get confirmed at review
-var MIN_ORDER       = 10;        // parts subtotal is raised to this if lower ("small-order adjustment")
+var MIN_ORDER       = 0;         // order-level "small-order adjustment" line is OFF (set above 0 to bring it back)
 var FREE_SHIP_OVER  = 150;       // Small/Medium shipping is free when parts subtotal reaches this
 var LOCAL_FEE       = 10;        // flat fee, hand delivery within the ZIP list below
 var PACK_G          = 100;       // packaging weight added to every shipment (grams)
