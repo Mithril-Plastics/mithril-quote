@@ -122,6 +122,7 @@ const S = {
   speed: 'standard',   // 'standard' | 'expedited'
   shipMethod: 'ship',  // 'ship' | 'local'
   zip: '',
+  contact: {},   // name/email/phone/company/note typed so far — kept in memory only (never stored or sent anywhere) so going back doesn't wipe them
 };
 
 // ── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -374,6 +375,8 @@ function renderCards() {
 }
 
 function inch(mm) { return +(mm / 25.4).toFixed(2); }
+// Money display: 1234.5 -> "1,234.50" (calculations still use plain numbers)
+function fmt2(n) { return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 function setFileUnit(idx, unit, via) {
   if (!S.files[idx] || !UNITS[unit]) return;
@@ -1106,6 +1109,7 @@ function renderHelpDecideQuote(eligible) {
         if (r.ok) {
           document.getElementById('mq-form-body').style.display = 'none';
           document.getElementById('mq-req-btn').style.display   = 'none';
+          var stkEl = document.getElementById('mq-sticky-total'); if (stkEl) stkEl.style.display = 'none';
           document.getElementById('mq-success').style.display   = '';
           mqTrack('submit_success', { mq_path: 'help-me-decide', mq_process: S.process, mq_files: eligible.length, mq_value: 0, mq_currency: 'USD' });
         } else {
@@ -1139,7 +1143,7 @@ function renderQuote() {
   function grandTotal() { return +items.reduce(function(s, it) { return s + it.lineTotal; }, 0).toFixed(2); }
   function filesSummary() {
     return items.map(function(it) {
-      return it.file.fileName + ' | ' + it.file.volume + ' cm³ | qty ' + it.file.qty + ' | $' + it.lineTotal.toFixed(2) + (it.file.inserts > 0 ? ' | + ' + it.file.inserts + ' heat-set inserts/part' : '');
+      return it.file.fileName + ' | ' + it.file.volume + ' cm³ | qty ' + it.file.qty + ' | $' + fmt2(it.lineTotal) + (it.file.inserts > 0 ? ' | + ' + it.file.inserts + ' heat-set inserts/part' : '');
     }).join('\n');
   }
 
@@ -1163,17 +1167,17 @@ function renderQuote() {
   }
   function refreshTotals() {
     var e = est(), fee = rushFee(), sh = ship(), adj = minAdj();
-    document.getElementById('mq-grand').textContent = '$' + grandTotal().toFixed(2);
+    document.getElementById('mq-grand').textContent = '$' + fmt2(grandTotal());
     var ar = document.getElementById('mq-adj-row');
-    if (ar) { ar.style.display = adj > 0 ? '' : 'none'; document.getElementById('mq-adj-fee').textContent = '$' + adj.toFixed(2); }
+    if (ar) { ar.style.display = adj > 0 ? '' : 'none'; document.getElementById('mq-adj-fee').textContent = '$' + fmt2(adj); }
     // shipping line + cards
     var sl = document.getElementById('mq-ship-label'), sv = document.getElementById('mq-ship-val');
     if (sl) sl.textContent = sh.label;
-    if (sv) sv.textContent = sh.review ? 'Quoted at review' : (sh.free ? 'FREE' : '$' + sh.amount.toFixed(2));
+    if (sv) sv.textContent = sh.review ? 'Quoted at review' : (sh.free ? 'FREE' : '$' + fmt2(sh.amount));
     var shipPrice = document.getElementById('mq-ship-price-ship');
     if (shipPrice) {
       var base = shippingQuote(items, S.process, S.material, S.infill, grandTotal(), 'ship', '');
-      shipPrice.textContent = base.review ? 'Oversize — quoted at review' : (base.free ? 'FREE · ' + base.tier + ' package' : '$' + base.amount.toFixed(2) + ' · ' + base.tier + ' package');
+      shipPrice.textContent = base.review ? 'Oversize — quoted at review' : (base.free ? 'FREE · ' + base.tier + ' package' : '$' + fmt2(base.amount) + ' · ' + base.tier + ' package');
     }
     var sn = document.getElementById('mq-ship-note');
     if (sn) sn.textContent = sh.review ? 'This order is oversize or heavy, so we\'ll confirm the exact shipping cost before you pay anything.'
@@ -1191,20 +1195,22 @@ function renderQuote() {
     if (ir) {
       var ifee = insertFee();
       ir.style.display = ifee > 0 ? '' : 'none';
-      document.getElementById('mq-ins-fee').textContent = '$' + ifee.toFixed(2);
-      document.getElementById('mq-ins-desc').textContent = '(' + insTotal() + ' × $' + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup)';
+      document.getElementById('mq-ins-fee').textContent = '$' + fmt2(ifee);
+      document.getElementById('mq-ins-desc').textContent = '(' + insTotal() + ' × $' + fmt2(INSERT_FEE) + ' + $' + fmt2(INSERT_SETUP) + ' setup)';
     }
     var rr = document.getElementById('mq-rush-row');
-    if (rr) { rr.style.display = fee > 0 ? '' : 'none'; document.getElementById('mq-rush-fee').textContent = '$' + fee.toFixed(2); }
+    if (rr) { rr.style.display = fee > 0 ? '' : 'none'; document.getElementById('mq-rush-fee').textContent = '$' + fmt2(fee); }
     var ot = document.getElementById('mq-order-total');
-    if (ot) ot.textContent = '$' + orderTotal().toFixed(2);
+    if (ot) ot.textContent = '$' + fmt2(orderTotal());
+    var sa = document.getElementById('mq-sticky-amt'); if (sa) sa.textContent = '$' + fmt2(orderTotal());
+    var sl = document.getElementById('mq-sticky-label'); if (sl) sl.textContent = ship().review ? 'Total (before shipping)' : 'Order total';
     // speed cards
     var sd = document.getElementById('mq-speed-date-standard'), ed = document.getElementById('mq-speed-date-expedited');
     // Review cases are shown as targets, not promises.
     if (sd) sd.textContent = (e.large ? 'Estimated ' : 'Ships by ') + fmtDay(e.standard.date) + (e.large ? '*' : '');
     if (ed) ed.textContent = (e.expedited.review ? 'Target ' : 'Ships by ') + fmtDay(e.expedited.date) + (e.expedited.review ? '*' : '');
     var ep = document.getElementById('mq-speed-price-expedited');
-    if (ep) ep.textContent = '+$' + (prodSub() * RUSH_PCT).toFixed(2) + ' (+' + Math.round(RUSH_PCT * 100) + '%)';
+    if (ep) ep.textContent = '+$' + fmt2(prodSub() * RUSH_PCT) + ' (+' + Math.round(RUSH_PCT * 100) + '%)';
     var note = document.getElementById('mq-speed-note');
     if (note) {
       var msg = e.startsToday ? 'Order before 12:00 PM PT today and production starts today.'
@@ -1239,14 +1245,14 @@ function renderQuote() {
       return '<div class="mq-fl" data-idx="' + i + '">' +
         '<div><div class="mq-fl-name">' + esc(it.file.fileName) + '</div>' +
         '<div class="mq-fl-sub">' + it.file.volume + ' cm³</div>' +
-        (it.pct > 0 ? '<div class="mq-fl-filesave">−' + it.pct + '% · saving $' + fileSave.toFixed(2) + '</div>' : '<div class="mq-fl-filesave"></div>') +
+        (it.pct > 0 ? '<div class="mq-fl-filesave">−' + it.pct + '% · saving $' + fmt2(fileSave) + '</div>' : '<div class="mq-fl-filesave"></div>') +
         '</div>' +
-        '<div class="mq-fl-vol">$' + it.unit.toFixed(2) + ' / ea</div>' +
+        '<div class="mq-fl-vol">$' + fmt2(it.unit) + ' / ea</div>' +
         '<div class="mq-fl-qty"><div class="mq-stepper"><button class="mq-dec">−</button>' +
         '<input type="number" min="1" value="' + it.file.qty + '" class="mq-qty-inp">' +
         '<button class="mq-inc">+</button></div>' +
         (it.pct > 0 ? '<span class="mq-badge">−' + it.pct + '%</span>' : '') + '</div>' +
-        '<div class="mq-fl-price mq-line-total">$' + it.lineTotal.toFixed(2) + '</div>' +
+        '<div class="mq-fl-price mq-line-total">$' + fmt2(it.lineTotal) + '</div>' +
       '</div>';
     }).join('') + '</div>' +
 
@@ -1269,7 +1275,9 @@ function renderQuote() {
     /* ── Heat-set inserts (FDM): one count per part, per file ── */
     (S.process === 'FDM' ?
       '<div class="mq-inserts" id="mq-inserts">' +
-        '<p class="mq-speed-label">Heat-set inserts <em>$' + INSERT_FEE.toFixed(2) + ' each + $' + INSERT_SETUP.toFixed(2) + ' setup per order</em></p>' +
+        '<p class="mq-speed-label">Heat-set inserts <em>$' + fmt2(INSERT_FEE) + ' each + $' + fmt2(INSERT_SETUP) + ' setup per order</em>' +
+          '<button type="button" class="mq-tip-btn" id="mq-ins-tip-btn" aria-expanded="false" aria-controls="mq-ins-tip" aria-label="What are heat-set inserts?">?</button></p>' +
+        '<p class="mq-tip-text" id="mq-ins-tip" role="note" hidden>Plastic threads wear out after a few uses. A heat-set insert is a threaded brass fitting melted into the part, so a screw or bolt can go in and out many times without stripping.</p>' +
         '<p class="mq-inserts-help">Threaded brass inserts installed by us. Enter how many <strong>each part</strong> needs — leave at 0 for none. We confirm thread sizes at review.</p>' +
         items.map(function(it, i) {
           return '<div class="mq-insrow" data-idx="' + i + '">' +
@@ -1323,7 +1331,7 @@ function renderQuote() {
         '<button type="button" class="mq-speed-opt' + (S.shipMethod === 'local' ? ' active' : '') + '" role="radio" aria-checked="' + (S.shipMethod === 'local') + '" data-ship="local">' +
           '<span class="mq-speed-name">Local delivery</span>' +
           '<span class="mq-speed-date">Hand-delivered by our team</span>' +
-          '<span class="mq-speed-price">$' + LOCAL_FEE.toFixed(2) + ' · Orange County area</span>' +
+          '<span class="mq-speed-price">$' + fmt2(LOCAL_FEE) + ' · Orange County area</span>' +
         '</button>' +
       '</div>' +
       '<div class="mq-zip-row" id="mq-zip-row" style="display:' + (S.shipMethod === 'local' ? 'flex' : 'none') + '">' +
@@ -1335,12 +1343,12 @@ function renderQuote() {
       '<p class="mq-speed-note" id="mq-ship-nudge"></p>' +
     '</div>' +
 
-    '<div class="mq-grand-row mq-parts-subtotal-row"><span>Parts Subtotal</span><span id="mq-grand">$' + grandTotal().toFixed(2) + '</span></div>' +
+    '<div class="mq-grand-row mq-parts-subtotal-row"><span>Parts Subtotal</span><span id="mq-grand">$' + fmt2(grandTotal()) + '</span></div>' +
     '<div class="mq-shipping-row" id="mq-adj-row" style="display:none"><span>Small-order adjustment <em class="mq-minfo" title="Orders under $' + MIN_ORDER + ' are billed at the $' + MIN_ORDER + ' order minimum.">(minimum $' + MIN_ORDER + ')</em></span><span id="mq-adj-fee"></span></div>' +
     '<div class="mq-shipping-row" id="mq-ins-row" style="display:none"><span>Heat-set inserts <em class="mq-minfo" id="mq-ins-desc"></em></span><span id="mq-ins-fee"></span></div>' +
     '<div class="mq-shipping-row mq-rush-row" id="mq-rush-row" style="display:none"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span id="mq-rush-fee"></span></div>' +
     '<div class="mq-shipping-row"><span id="mq-ship-label">Shipping</span><span id="mq-ship-val"></span></div>' +
-    '<div class="mq-grand-row mq-order-total-row"><span id="mq-order-total-label">Order Total</span><span id="mq-order-total">$' + orderTotal().toFixed(2) + '</span></div>' +
+    '<div class="mq-grand-row mq-order-total-row"><span id="mq-order-total-label">Order Total</span><span id="mq-order-total">$' + fmt2(orderTotal()) + '</span></div>' +
 
     /* ── Form body — hidden as a unit on success ── */
     '<div id="mq-form-body">' +
@@ -1379,7 +1387,47 @@ function renderQuote() {
       '</div>' +
     '</div>' +
     '<p class="mq-footnote">Prices based on current material rates · Estimates typically valid for 30 days</p>' +
-    '<p class="mq-footnote">If you don\'t hear from us, please check your spam or junk folder.</p>';
+    '<p class="mq-footnote">If you don\'t hear from us, please check your spam or junk folder.</p>' +
+
+    /* ── Sticky total (phones only; CSS hides it elsewhere). Must sit at the END of the tall quote body so it can stick while scrolling. ── */
+    '<div class="mq-sticky-total" id="mq-sticky-total">' +
+      '<div class="mq-sticky-amt"><span id="mq-sticky-label">Order total</span><strong id="mq-sticky-amt">$' + fmt2(orderTotal()) + '</strong></div>' +
+      '<button type="button" class="mq-sticky-btn" id="mq-sticky-go">Review &amp; submit ↓</button>' +
+    '</div>';
+
+  // ── Remember contact details while navigating between steps (memory only) ───
+  ['name', 'email', 'phone', 'company', 'note'].forEach(function(k) {
+    var el = document.getElementById('mq-c-' + k);
+    if (!el) return;
+    if (S.contact[k]) el.value = S.contact[k];
+    el.addEventListener('input', function() { S.contact[k] = el.value; });
+  });
+
+  // ── Heat-set insert explainer ────────────────────────────────────────────────
+  var tipBtn = document.getElementById('mq-ins-tip-btn'), tipTxt = document.getElementById('mq-ins-tip');
+  if (tipBtn && tipTxt) tipBtn.addEventListener('click', function() {
+    var open = tipTxt.hidden;
+    tipTxt.hidden = !open;
+    tipBtn.setAttribute('aria-expanded', String(open));
+  });
+
+  // ── Sticky order-total bar (phones): shown only while the real total and the submit button are off-screen ──
+  var stk = document.getElementById('mq-sticky-total'), stkGo = document.getElementById('mq-sticky-go');
+  if (stk && stkGo) {
+    stkGo.addEventListener('click', function() {
+      var b = document.getElementById('mq-req-btn');
+      var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (b) b.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'center' });
+    });
+    if ('IntersectionObserver' in window) {
+      var seen = {};
+      var io = new IntersectionObserver(function(entries) {
+        entries.forEach(function(en) { seen[en.target.id] = en.isIntersecting; });
+        stk.classList.toggle('mq-sticky-show', !(seen['mq-order-total-label'] || seen['mq-req-btn']));
+      }, { root: document.querySelector('.mq-body'), threshold: 0 });
+      ['mq-order-total-label', 'mq-req-btn'].forEach(function(id) { var t = document.getElementById(id); if (t) io.observe(t); });
+    }
+  }
 
   // ── Qty changes in quote line items ──────────────────────────────────────────
   document.getElementById('mq-lines').addEventListener('click', function(e) {
@@ -1404,7 +1452,7 @@ function renderQuote() {
     if (!inp || !sum) return;
     inp.value = it.file.inserts || 0;
     var n = (it.file.inserts || 0) * it.file.qty;
-    sum.textContent = n > 0 ? n + ' total · $' + (n * INSERT_FEE).toFixed(2) : '';
+    sum.textContent = n > 0 ? n + ' total · $' + fmt2(n * INSERT_FEE) : '';
   }
   function setInserts(idx, val) {
     val = Math.min(INSERT_MAX, Math.max(0, parseInt(val) || 0));
@@ -1487,10 +1535,10 @@ function renderQuote() {
         var fresh = calcLine(it.file);
         it.base = fresh.base; it.unit = fresh.unit; it.pct = fresh.pct; it.lineTotal = fresh.lineTotal;
         var row = document.querySelector('#mq-lines .mq-fl[data-idx="' + i + '"]');
-        row.querySelector('.mq-fl-vol').textContent = '$' + it.unit.toFixed(2) + ' / ea';
-        row.querySelector('.mq-line-total').textContent = '$' + it.lineTotal.toFixed(2);
+        row.querySelector('.mq-fl-vol').textContent = '$' + fmt2(it.unit) + ' / ea';
+        row.querySelector('.mq-line-total').textContent = '$' + fmt2(it.lineTotal);
         var saveEl = row.querySelector('.mq-fl-filesave');
-        if (saveEl) saveEl.textContent = it.pct > 0 ? '−' + it.pct + '% · saving $' + +((it.base - it.unit) * it.file.qty).toFixed(2) : '';
+        if (saveEl) saveEl.textContent = it.pct > 0 ? '−' + it.pct + '% · saving $' + fmt2((it.base - it.unit) * it.file.qty) : '';
         var badge = row.querySelector('.mq-badge');
         if (it.pct > 0) {
           if (!badge) { badge = document.createElement('span'); badge.className = 'mq-badge'; row.querySelector('.mq-fl-qty').appendChild(badge); }
@@ -1533,23 +1581,23 @@ function renderQuote() {
       mqTrack('save_attempt', { mq_value: grandTotal(), mq_currency: 'USD' });
 
       var sh = ship(), fd = new FormData();
-      fd.append('_subject', 'Saved quote (email only, NOT submitted) — $' + orderTotal().toFixed(2));
+      fd.append('_subject', 'Saved quote (email only, NOT submitted) — $' + fmt2(orderTotal()));
       fd.append('type',     'SAVED QUOTE — customer asked for a copy; files NOT uploaded; no review requested');
       fd.append('email',    email);
       fd.append('process',  S.process);
       fd.append('material', S.materialLabel);
       if (S.process === 'FDM') fd.append('infill', S.infill + '%');
       fd.append('quote',    filesSummary());
-      fd.append('parts_subtotal', '$' + grandTotal().toFixed(2));
-      if (minAdj() > 0)  fd.append('small_order_adjustment', '$' + minAdj().toFixed(2));
-      if (insertFee() > 0) fd.append('heat_set_inserts', '$' + insertFee().toFixed(2) + ' (' + insTotal() + (insTotal() === 1 ? ' insert' : ' inserts') + ' + $' + INSERT_SETUP.toFixed(2) + ' setup)');
-      if (rushFee() > 0) fd.append('expedited_fee', '$' + rushFee().toFixed(2));
+      fd.append('parts_subtotal', '$' + fmt2(grandTotal()));
+      if (minAdj() > 0)  fd.append('small_order_adjustment', '$' + fmt2(minAdj()));
+      if (insertFee() > 0) fd.append('heat_set_inserts', '$' + fmt2(insertFee()) + ' (' + insTotal() + (insTotal() === 1 ? ' insert' : ' inserts') + ' + $' + fmt2(INSERT_SETUP) + ' setup)');
+      if (rushFee() > 0) fd.append('expedited_fee', '$' + fmt2(rushFee()));
       if (S.requests.length) fd.append('special_requests', reqLabels().join('; ') + ' (priced at review — not in total)');
       fd.append('delivery_speed',  S.speed === 'expedited' ? 'EXPEDITED (+' + Math.round(RUSH_PCT * 100) + '%)' : 'Standard');
       fd.append('ship_by',         shipByText());
       fd.append('delivery_method', sh.method === 'local' ? 'Local delivery requested' : 'Ship — ' + sh.tier + ' package');
-      fd.append('shipping',        sh.review ? 'QUOTE AT REVIEW (oversize)' : (sh.free ? '$0.00 (free over $' + FREE_SHIP_OVER + ')' : '$' + shipAmt().toFixed(2)));
-      fd.append('order_total',     '$' + orderTotal().toFixed(2) + (sh.review ? ' (BEFORE shipping)' : ''));
+      fd.append('shipping',        sh.review ? 'QUOTE AT REVIEW (oversize)' : (sh.free ? '$0.00 (free over $' + FREE_SHIP_OVER + ')' : '$' + fmt2(shipAmt())));
+      fd.append('order_total',     '$' + fmt2(orderTotal()) + (sh.review ? ' (BEFORE shipping)' : ''));
       mqAttribution(fd);
 
       fetch(FORMSPREE_SAVE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
@@ -1612,18 +1660,18 @@ function renderQuote() {
     fd.append('material',    S.materialLabel);
     if (S.process === 'FDM') fd.append('infill', S.infill + '%');
     fd.append('quote',       filesSummary());
-    fd.append('parts_subtotal', '$' + grandTotal().toFixed(2));
-    if (insertFee() > 0) fd.append('heat_set_inserts', '$' + insertFee().toFixed(2) + ' — ' + insTotal() + (insTotal() === 1 ? ' insert × $' : ' inserts × $') + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup (' + insDetail() + ')');
-    if (rushFee() > 0) fd.append('expedited_fee', '$' + rushFee().toFixed(2));
-    if (minAdj() > 0) fd.append('small_order_adjustment', '$' + minAdj().toFixed(2) + ' (raised to $' + MIN_ORDER + ' minimum)');
+    fd.append('parts_subtotal', '$' + fmt2(grandTotal()));
+    if (insertFee() > 0) fd.append('heat_set_inserts', '$' + fmt2(insertFee()) + ' — ' + insTotal() + (insTotal() === 1 ? ' insert × $' : ' inserts × $') + fmt2(INSERT_FEE) + ' + $' + fmt2(INSERT_SETUP) + ' setup (' + insDetail() + ')');
+    if (rushFee() > 0) fd.append('expedited_fee', '$' + fmt2(rushFee()));
+    if (minAdj() > 0) fd.append('small_order_adjustment', '$' + fmt2(minAdj()) + ' (raised to $' + MIN_ORDER + ' minimum)');
     if (S.requests.length) {
       fd.append('special_requests', reqLabels().join('; '));
       fd.append('needs_manual_review_options', 'YES — customer asked for options not priced online; quote them and send an updated total');
     }
     fd.append('delivery_method', ship().method === 'local' ? 'LOCAL DELIVERY — ZIP ' + S.zip : 'Ship — ' + ship().tier + ' package (est. ' + Math.round(ship().grams / 453.6 * 10) / 10 + ' lb, longest side ' + ship().inches + ' in)');
-    fd.append('shipping',       ship().review ? 'QUOTE AT REVIEW (oversize)' : (ship().free ? '$0.00 (free over $' + FREE_SHIP_OVER + ')' : '$' + shipAmt().toFixed(2)));
+    fd.append('shipping',       ship().review ? 'QUOTE AT REVIEW (oversize)' : (ship().free ? '$0.00 (free over $' + FREE_SHIP_OVER + ')' : '$' + fmt2(shipAmt())));
     if (ship().review) fd.append('needs_manual_review_shipping', 'YES — oversize/heavy; quote shipping and send updated total');
-    fd.append('order_total',    '$' + orderTotal().toFixed(2) + (ship().review ? ' (BEFORE shipping — oversize, quote separately)' : ''));
+    fd.append('order_total',    '$' + fmt2(orderTotal()) + (ship().review ? ' (BEFORE shipping — oversize, quote separately)' : ''));
     fd.append('delivery_speed', S.speed === 'expedited' ? 'EXPEDITED (+' + Math.round(RUSH_PCT * 100) + '%)' : 'Standard');
     fd.append('ship_by',        shipByText());
     fd.append('lead_time',      (S.speed === 'expedited' ? 'Expedited' : 'Standard') + ' — est. ship by ' + shipByText() + (est().startsToday ? ' (if confirmed today before noon PT)' : ''));
@@ -1653,6 +1701,7 @@ function renderQuote() {
           var succEl = document.getElementById('mq-success');
           document.getElementById('mq-form-body').style.display = 'none';
           document.getElementById('mq-req-btn').style.display   = 'none';
+          var stkEl = document.getElementById('mq-sticky-total'); if (stkEl) stkEl.style.display = 'none';
 
           // Generate a quote reference
           var quoteRef = 'MQ-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + (Date.now() % 10000).toString().padStart(4,'0');
@@ -1666,25 +1715,25 @@ function renderQuote() {
             process:  S.process,
             material: S.materialLabel,
             infill:    S.process === 'FDM' ? S.infill : null,
-            subtotal:  grandTotal().toFixed(2),
-            rush:      rushFee() > 0 ? rushFee().toFixed(2) : null,
+            subtotal:  fmt2(grandTotal()),
+            rush:      rushFee() > 0 ? fmt2(rushFee()) : null,
             rushPct:   Math.round(RUSH_PCT * 100),
             speed:     S.speed,
             shipBy:    shipByText(),
-            adj:       minAdj() > 0 ? minAdj().toFixed(2) : null,
-            ins:       insertFee() > 0 ? insertFee().toFixed(2) : null,
-            insDesc:   insertFee() > 0 ? insTotal() + ' × $' + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup' : '',
+            adj:       minAdj() > 0 ? fmt2(minAdj()) : null,
+            ins:       insertFee() > 0 ? fmt2(insertFee()) : null,
+            insDesc:   insertFee() > 0 ? insTotal() + ' × $' + fmt2(INSERT_FEE) + ' + $' + fmt2(INSERT_SETUP) + ' setup' : '',
             requests:  reqLabels(),
             transit:   (ship().method === 'ship' && !ship().review) ? TRANSIT_TEXT : '',
             minOrder:  MIN_ORDER,
             shipLabel: ship().label,
-            shipping:  ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2)),
-            total:     orderTotal().toFixed(2),
+            shipping:  ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + fmt2(shipAmt())),
+            total:     fmt2(orderTotal()),
             note:     note,
             items:    items.map(function(it) {
               return { fileName: it.file.fileName, volume: it.file.volume,
-                       qty: it.file.qty, unit: it.unit.toFixed(2),
-                       pct: it.pct, lineTotal: it.lineTotal.toFixed(2) };
+                       qty: it.file.qty, unit: fmt2(it.unit),
+                       pct: it.pct, lineTotal: fmt2(it.lineTotal) };
             })
           };
 
@@ -1710,16 +1759,16 @@ function renderQuote() {
                 return '<div class="mq-success-fl-row">' +
                   '<span class="mq-success-fname">' + esc(it.file.fileName) + '</span>' +
                   '<span>' + it.file.qty + '</span>' +
-                  '<span>$' + it.unit.toFixed(2) + '</span>' +
-                  '<span>$' + it.lineTotal.toFixed(2) + (it.pct > 0 ? '<em> −' + it.pct + '%</em>' : '') + '</span>' +
+                  '<span>$' + fmt2(it.unit) + '</span>' +
+                  '<span>$' + fmt2(it.lineTotal) + (it.pct > 0 ? '<em> −' + it.pct + '%</em>' : '') + '</span>' +
                 '</div>';
               }).join('') +
-              '<div class="mq-success-subtotal-row"><span>Parts Subtotal</span><span>$' + grandTotal().toFixed(2) + '</span></div>' +
-              (minAdj() > 0 ? '<div class="mq-success-shipping-row"><span>Small-order adjustment (min. $' + MIN_ORDER + ')</span><span>$' + minAdj().toFixed(2) + '</span></div>' : '') +
-              (insertFee() > 0 ? '<div class="mq-success-shipping-row"><span>Heat-set inserts (' + insTotal() + ' × $' + INSERT_FEE.toFixed(2) + ' + $' + INSERT_SETUP.toFixed(2) + ' setup)</span><span>$' + insertFee().toFixed(2) + '</span></div>' : '') +
-              (rushFee() > 0 ? '<div class="mq-success-shipping-row"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span>$' + rushFee().toFixed(2) + '</span></div>' : '') +
-              '<div class="mq-success-shipping-row"><span>' + ship().label + '</span><span>' + (ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2))) + '</span></div>' +
-              '<div class="mq-success-total-row"><span>Order Total' + (ship().review ? ' (before shipping)' : '') + '</span><span>$' + orderTotal().toFixed(2) + '</span></div>' +
+              '<div class="mq-success-subtotal-row"><span>Parts Subtotal</span><span>$' + fmt2(grandTotal()) + '</span></div>' +
+              (minAdj() > 0 ? '<div class="mq-success-shipping-row"><span>Small-order adjustment (min. $' + MIN_ORDER + ')</span><span>$' + fmt2(minAdj()) + '</span></div>' : '') +
+              (insertFee() > 0 ? '<div class="mq-success-shipping-row"><span>Heat-set inserts (' + insTotal() + ' × $' + fmt2(INSERT_FEE) + ' + $' + fmt2(INSERT_SETUP) + ' setup)</span><span>$' + fmt2(insertFee()) + '</span></div>' : '') +
+              (rushFee() > 0 ? '<div class="mq-success-shipping-row"><span>Expedited (+' + Math.round(RUSH_PCT * 100) + '%)</span><span>$' + fmt2(rushFee()) + '</span></div>' : '') +
+              '<div class="mq-success-shipping-row"><span>' + ship().label + '</span><span>' + (ship().review ? 'Quoted at review' : (ship().free ? 'FREE' : '$' + fmt2(shipAmt()))) + '</span></div>' +
+              '<div class="mq-success-total-row"><span>Order Total' + (ship().review ? ' (before shipping)' : '') + '</span><span>$' + fmt2(orderTotal()) + '</span></div>' +
               '<div class="mq-success-note"><strong>' + (S.speed === 'expedited' ? 'Expedited' : 'Standard') + ' delivery:</strong> est. ship by ' + esc(shipByText()) + (ship().method === 'ship' && !ship().review ? '. ' + TRANSIT_TEXT : '') + '</div>' +
               (S.requests.length ? '<div class="mq-success-note"><strong>Priced at review:</strong> ' + esc(reqLabels().join('; ')) + '</div>' : '') +
               (note ? '<div class="mq-success-note"><strong>Notes:</strong> ' + note + '</div>' : '') +
@@ -1791,7 +1840,7 @@ function renderQuote() {
               cityEl.value.trim() + ', ' + stateEl.value.trim().toUpperCase() + ' ' + zipEl.value.trim()
             ].filter(Boolean).join(', '));
             var offRegion = S.shipMethod === 'ship' && NON_LOWER48.indexOf(stateEl.value.trim().toUpperCase()) !== -1;
-            sfd.append('shipping_quoted', ship().review ? 'QUOTE AT REVIEW (oversize)' : (ship().method === 'local' ? 'Local delivery $' + shipAmt().toFixed(2) : (ship().free ? 'FREE' : '$' + shipAmt().toFixed(2)) + ' flat (' + ship().tier + ')'));
+            sfd.append('shipping_quoted', ship().review ? 'QUOTE AT REVIEW (oversize)' : (ship().method === 'local' ? 'Local delivery $' + fmt2(shipAmt()) : (ship().free ? 'FREE' : '$' + fmt2(shipAmt())) + ' flat (' + ship().tier + ')'));
             if (offRegion) sfd.append('needs_manual_review_shipping', 'YES — destination outside the continental U.S. (' + stateEl.value.trim().toUpperCase() + '); confirm shipping cost and send updated total before invoicing');
             fetch(FORMSPREE_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: sfd })
               .then(function(res) { return res.json().catch(function() { return {}; }).then(function(d) { return { ok: res.ok, data: d }; }); })
@@ -1835,7 +1884,7 @@ function renderQuote() {
     var unit = +(it.base * (1 - pct / 100)).toFixed(2);
     it.lineTotal = +(unit * val).toFixed(2);
     it.pct = pct;
-    row.querySelector('.mq-line-total').textContent = '$' + it.lineTotal.toFixed(2);
+    row.querySelector('.mq-line-total').textContent = '$' + fmt2(it.lineTotal);
     var badge = row.querySelector('.mq-badge');
     if (pct > 0) {
       if (!badge) { badge = document.createElement('span'); badge.className = 'mq-badge'; row.querySelector('.mq-fl-qty').appendChild(badge); }
@@ -1845,7 +1894,7 @@ function renderQuote() {
     if (saveEl) {
       if (pct > 0) {
         var fs = +((it.base - unit) * val).toFixed(2);
-        saveEl.textContent = '−' + pct + '% · saving $' + fs.toFixed(2);
+        saveEl.textContent = '−' + pct + '% · saving $' + fmt2(fs);
       } else {
         saveEl.textContent = '';
       }
