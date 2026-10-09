@@ -43,7 +43,7 @@
       '#mq-float-btn .mq-float-icon{font-size:18px;line-height:1}',
       '#mq-modal-overlay{display:none;position:fixed;inset:0;z-index:9995;background:rgba(0,0,0,.78);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);align-items:center;justify-content:center;padding:16px}',
       '#mq-modal-overlay.mq-open{display:flex}',
-      '#mq-modal-wrap{position:relative;width:100%;max-width:700px}',
+      '#mq-modal-wrap{position:relative;width:100%;max-width:1000px}',
       '#mq-modal-box{width:100%;max-height:92vh;overflow-y:auto;border-radius:18px;background:#111;box-shadow:0 24px 80px rgba(0,0,0,.6),0 0 0 1px rgba(86,5,145,.4);scrollbar-width:thin;scrollbar-color:rgba(86,5,145,.4) transparent}',
       '#mq-modal-box::-webkit-scrollbar{width:5px}',
       '#mq-modal-box::-webkit-scrollbar-thumb{background:rgba(86,5,145,.4);border-radius:4px}',
