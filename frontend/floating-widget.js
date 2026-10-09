@@ -25,7 +25,7 @@
   // In modal mode, skip the /instant-quote page to avoid conflicts.
   if (!mqInDom && window.location.pathname === '/instant-quote') return;
 
-  var CDN_WIDGET = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@c7d311f/frontend';
+  var CDN_WIDGET = 'https://cdn.jsdelivr.net/gh/Mithril-Plastics/mithril-quote@ddc4370/frontend';
   var CDN_THREE  = 'https://cdn.jsdelivr.net/npm/three@0.128.0';
 
   // ── Widget CSS ──────────────────────────────────────────────────────────────
@@ -49,7 +49,8 @@
       '#mq-modal-box::-webkit-scrollbar-thumb{background:rgba(86,5,145,.4);border-radius:4px}',
       '#mq-modal-close{position:absolute;top:-14px;right:-14px;z-index:10;width:36px;height:36px;border-radius:50%;border:none;background:#1e1e1e;box-shadow:0 2px 12px rgba(0,0,0,.5),0 0 0 1.5px rgba(255,255,255,.1);color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,box-shadow .15s,color .15s,transform .15s}',
       '#mq-modal-close:hover{background:#ea384c;box-shadow:0 4px 18px rgba(234,56,76,.45),0 0 0 1.5px rgba(234,56,76,.6);color:#fff;transform:scale(1.1)}',
-      '#mq-modal-close svg{width:14px;height:14px;stroke:currentColor;stroke-width:2.5;stroke-linecap:round}'
+      '#mq-modal-close svg{width:14px;height:14px;stroke:currentColor;stroke-width:2.5;stroke-linecap:round}',
+      '#mq-modal-close:focus-visible{outline:3px solid #54f2e5;outline-offset:2px}'
     ].join('');
     document.head.appendChild(style);
   }
