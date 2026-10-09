@@ -52,7 +52,9 @@
 
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 #mq *{box-sizing:border-box;font-family:'Khula',sans-serif}
-#mq{max-width:780px;margin:0 auto;background:var(--mq-bg);border:1px solid var(--mq-wbrd);border-radius:18px;box-shadow:var(--mq-wshd);display:flex;flex-direction:column;max-height:calc(100vh - 180px)}
+/* Instant Quote page: the Webflow wrapper was capped at 620px; allow the widget its full width (padding 20px each side) */
+.iq-widget-wrap.iq-widget-wrap{max-width:1040px!important}
+#mq{max-width:1000px;margin:0 auto;background:var(--mq-bg);border:1px solid var(--mq-wbrd);border-radius:18px;box-shadow:var(--mq-wshd);display:flex;flex-direction:column;max-height:calc(100vh - 180px)}
 .mq-brand-header{display:flex;align-items:center;justify-content:space-between;padding:34px 48px 32px;border-bottom:1px solid rgba(86,5,145,.5);flex-shrink:0}
 .mq-brand-logo img{height:42px;width:auto;display:block}
 .mq-brand-right{display:flex;align-items:center;gap:14px}
@@ -128,6 +130,7 @@
 .mq-card-body{display:flex;gap:18px;align-items:flex-start;margin-bottom:18px}
 .mq-card-thumb{width:88px;height:88px;flex-shrink:0;background:var(--mq-bg-thumb);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid rgba(86,5,145,.25)}
 .mq-card-thumb img{width:100%;height:100%;object-fit:contain}
+@media(min-width:900px){.iq-widget-wrap .mq-card-thumb{width:132px;height:132px}.iq-widget-wrap .mq-card-body{gap:24px}}
 .mq-card-thumb-placeholder{font-size:28px}
 .mq-card-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;padding-top:4px}
 .mq-card-dims{font-size:13px;color:var(--mq-teal);letter-spacing:.01em}
